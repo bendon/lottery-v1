@@ -30,7 +30,7 @@ def _parse_mpesa_time(raw: Optional[str]) -> datetime:
     return datetime.utcnow()
 
 
-@router.post("/mpesa/c2b")
+@router.post("/daraja/c2b")
 async def mpesa_c2b_confirmation(request: Request):
     """
     C2B Confirmation — fired by M-Pesa when a customer pays via Till or Paybill.
@@ -77,7 +77,7 @@ async def mpesa_c2b_confirmation(request: Request):
         return MPESA_ACK  # Always 200 to M-Pesa
 
 
-@router.post("/mpesa/c2b/validate")
+@router.post("/daraja/c2b/validate")
 async def mpesa_c2b_validation(request: Request):
     """
     C2B Validation — called before confirmation (optional).
@@ -88,7 +88,7 @@ async def mpesa_c2b_validation(request: Request):
     return MPESA_ACK
 
 
-@router.post("/mpesa/stk-callback")
+@router.post("/daraja/stk-callback")
 async def mpesa_stk_callback(request: Request):
     """
     STK Push result — fired after customer responds to the M-Pesa prompt.

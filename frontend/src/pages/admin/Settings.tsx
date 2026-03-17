@@ -310,7 +310,7 @@ export default function AdminSettings() {
                   <input
                     value={mpesaForm.mpesa_callback_url ?? ""}
                     onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_callback_url: e.target.value }))}
-                    placeholder="https://yourdomain.com/api/webhooks/mpesa/stk-callback"
+                    placeholder="https://yourdomain.com/api/webhooks/daraja/stk-callback"
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                   />
                 </div>
@@ -319,7 +319,7 @@ export default function AdminSettings() {
                   <input
                     value={mpesaForm.mpesa_c2b_confirmation_url ?? ""}
                     onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_c2b_confirmation_url: e.target.value }))}
-                    placeholder="https://yourdomain.com/api/webhooks/mpesa/c2b"
+                    placeholder="https://yourdomain.com/api/webhooks/daraja/c2b"
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                   />
                 </div>
@@ -328,7 +328,7 @@ export default function AdminSettings() {
                   <input
                     value={mpesaForm.mpesa_c2b_validation_url ?? ""}
                     onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_c2b_validation_url: e.target.value }))}
-                    placeholder="https://yourdomain.com/api/webhooks/mpesa/c2b/validate"
+                    placeholder="https://yourdomain.com/api/webhooks/daraja/c2b/validate"
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                   />
                 </div>
