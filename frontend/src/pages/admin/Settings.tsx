@@ -336,9 +336,9 @@ export default function AdminSettings() {
             </div>
 
             {mpesaError && (
-              <p className={`text-sm ${mpesaError.includes("successfully") ? "text-green-600" : "text-red-500"}`}>
+              <div className={`rounded-lg px-4 py-3 text-sm ${/success/i.test(mpesaError) ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
                 {mpesaError}
-              </p>
+              </div>
             )}
 
             <div className="flex flex-wrap gap-3 pt-2">
