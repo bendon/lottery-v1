@@ -123,12 +123,13 @@ export default function PresenterDashboard() {
   useEffect(() => {
     if (tab !== "transactions") return;
     setTxnLoading(true);
+    const url = selectedPromotion ? `/api/transactions?promotion_id=${selectedPromotion}` : "/api/transactions";
     api
-      .get<MaskedTransaction[]>("/api/transactions")
+      .get<MaskedTransaction[]>(url)
       .then((r) => setTransactions(r.data))
       .catch(() => setTransactions([]))
       .finally(() => setTxnLoading(false));
-  }, [tab]);
+  }, [tab, selectedPromotion]);
 
   const handleDraw = async () => {
     setDrawError("");

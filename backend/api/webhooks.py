@@ -62,7 +62,8 @@ async def mpesa_c2b_confirmation(request: Request):
         trans_type = (data.get("TransactionType") or "").lower()
         payment_type = "paybill" if "pay bill" in trans_type or "paybill" in trans_type else "till"
 
-        # C2B sends BusinessShortCode - store for matching (Till and Paybill both use it)
+        # C2B: BusinessShortCode = paybill/till; BillRefNumber = Paybill account
+        bill_ref = str(data.get("BillRefNumber", "") or "").strip() or None
         txn = Transaction(
             transaction_number=trans_id,
             payment_type=payment_type,
@@ -71,7 +72,8 @@ async def mpesa_c2b_confirmation(request: Request):
             customer_phone=str(data.get("MSISDN", "")),
             payment_date=_parse_mpesa_time(data.get("TransTime")),
             till_number=shortcode,
-            paybill_number=shortcode,  # Same shortcode for both Till and Paybill
+            paybill_number=shortcode,
+            bill_ref_number=bill_ref,
             metadata=data,
         )
         await txn.insert()

@@ -31,6 +31,7 @@ export interface Promotion {
   user_id: string;
   lottery_id: string;
   name?: string;
+  account_number?: string;
   start_date: string;
   end_date: string;
   status: string;

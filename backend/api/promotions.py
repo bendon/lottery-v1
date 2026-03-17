@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from beanie import PydanticObjectId
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user, require_admin
@@ -16,6 +16,7 @@ class PromotionCreate(BaseModel):
     user_id: str
     lottery_id: str
     name: Optional[str] = None
+    account_number: Optional[str] = None  # Paybill account (BillRefNumber) — enables concurrent promotions
     start_date: datetime
     end_date: datetime
     status: str = "active"
@@ -23,29 +24,19 @@ class PromotionCreate(BaseModel):
 
 class PromotionUpdate(BaseModel):
     name: Optional[str] = None
+    account_number: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     status: Optional[str] = None
 
 
-async def _deactivate_other_promotions(exclude_id: Optional[PydanticObjectId] = None):
-    """Ensure only one promotion is active: set all others to completed."""
-    query = {"status": "active"}
-    if exclude_id:
-        query["_id"] = {"$ne": exclude_id}
-    others = await Promotion.find(query).to_list()
-    for p in others:
-        await p.set({"status": "completed"})
-
-
 @router.post("/api/admin/promotions")
 async def create_promotion(body: PromotionCreate, current_user=Depends(require_admin)):
-    if body.status == "active":
-        await _deactivate_other_promotions()
     promotion = Promotion(
         user_id=PydanticObjectId(body.user_id),
         lottery_id=PydanticObjectId(body.lottery_id),
         name=body.name,
+        account_number=body.account_number.strip() if body.account_number else None,
         start_date=body.start_date,
         end_date=body.end_date,
         status=body.status,
@@ -75,8 +66,8 @@ async def update_promotion(promotion_id: PydanticObjectId, body: PromotionUpdate
     if not p:
         raise HTTPException(status_code=404, detail="Promotion not found")
     updates = {k: v for k, v in body.dict().items() if v is not None}
-    if updates.get("status") == "active":
-        await _deactivate_other_promotions(exclude_id=promotion_id)
+    if "account_number" in updates and updates["account_number"] is not None:
+        updates["account_number"] = updates["account_number"].strip() or None
     await p.set(updates)
     return {"id": str(p.id), **p.dict()}
 
@@ -92,11 +83,11 @@ async def delete_promotion(promotion_id: PydanticObjectId, _=Depends(require_adm
 
 @router.get("/api/promotions")
 async def my_promotions(current_user=Depends(get_current_user)):
-    """Presenter view: the single active promotion assigned to this user (only one active globally)."""
-    active = await Promotion.find_one({"status": "active"})
-    if not active or active.user_id != current_user.id:
-        return []
-    return [{"id": str(active.id), **active.dict()}]
+    """Presenter view: all active promotions assigned to this user (concurrent via Paybill accounts)."""
+    promotions = await Promotion.find(
+        {"user_id": current_user.id, "status": "active"}
+    ).to_list()
+    return [{"id": str(p.id), **p.dict()} for p in promotions]
 
 
 def _mask_phone(phone: str) -> str:
@@ -130,21 +121,49 @@ def _mask_txn(txn_number: str) -> str:
 
 
 @router.get("/api/transactions")
-async def presenter_transactions(current_user=Depends(get_current_user)):
+async def presenter_transactions(
+    current_user=Depends(get_current_user),
+    promotion_id: Optional[str] = Query(None),
+):
     """
-    Presenter view: masked transactions for the single active promotion only.
-    Only transactions within the promotion's start_date..end_date are shown.
-    PII (name, phone, full transaction number) is redacted.
-    Admin sees all transactions via /api/admin/transactions.
+    Presenter view: masked transactions for user's promotions.
+    Optional promotion_id to filter by one promotion.
     """
-    active = await Promotion.find_one({"status": "active"})
-    if not active or active.user_id != current_user.id:
+    my_promos = await Promotion.find(
+        {"user_id": current_user.id, "status": "active"}
+    ).to_list()
+    if not my_promos:
         return []
 
-    query = {
-        "product_id": active.lottery_id,
-        "payment_date": {"$gte": active.start_date, "$lte": active.end_date},
-    }
+    if promotion_id:
+        promo = next((p for p in my_promos if str(p.id) == promotion_id), None)
+        if not promo:
+            return []
+        promos = [promo]
+    else:
+        promos = my_promos
+
+    # Build query: transactions for any of these promotions (by promotion_id or account match)
+    conditions = []
+    for p in promos:
+        date_range = {"$gte": p.start_date, "$lte": p.end_date}
+        if p.account_number:
+            conditions.append({
+                "$and": [
+                    {"$or": [
+                        {"promotion_id": p.id},
+                        {"product_id": p.lottery_id, "bill_ref_number": p.account_number},
+                    ]},
+                    {"payment_date": date_range},
+                ],
+            })
+        else:
+            conditions.append({
+                "product_id": p.lottery_id,
+                "payment_date": date_range,
+            })
+    query = {"$or": conditions} if len(conditions) > 1 else conditions[0]
+
     txns = (
         await Transaction.find(query)
         .sort("-payment_date")

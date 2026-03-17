@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     MPESA_PASSKEY: str = ""
     MPESA_BASE_URL: str = "https://api.safaricom.co.ke"
     # till = CustomerBuyGoodsOnline (Lipa Na M-Pesa), paybill = CustomerPayBillOnline
-    MPESA_ACCOUNT_TYPE: str = "till"
+    MPESA_ACCOUNT_TYPE: str = "paybill"
     MPESA_CALLBACK_URL: str = ""           # Public HTTPS URL for STK Push results
     MPESA_C2B_CONFIRMATION_URL: str = ""   # Public HTTPS URL for C2B confirmations
     MPESA_C2B_VALIDATION_URL: str = ""     # Public HTTPS URL for C2B validations

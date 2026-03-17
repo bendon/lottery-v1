@@ -22,13 +22,18 @@ async def get_eligible_transactions(promotion: Promotion) -> List[Transaction]:
     won_draws = await Draw.find_all().to_list()
     won_transaction_ids = {d.transaction_id for d in won_draws}
 
-    # Build base query - use promotion's date range (only one active at a time)
+    # Build base query - promotion date range; filter by account_number when Paybill
     query: dict = {
         "product_type": "lottery",
         "product_id": lottery.id,
         "payment_type": {"$in": lottery.payment_types},
         "payment_date": {"$gte": promotion.start_date, "$lte": promotion.end_date},
     }
+    if promotion.account_number:
+        query["$or"] = [
+            {"promotion_id": promotion.id},
+            {"bill_ref_number": promotion.account_number},
+        ]
 
     # Apply lottery-specific settings
     lottery_settings = lottery.settings or {}

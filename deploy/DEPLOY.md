@@ -103,6 +103,7 @@ After deployment, log in to the admin panel and go to **Settings → M-Pesa** �
 - **Sandbox callbacks are unreliable** — Daraja sandbox often fails to send callbacks; live/production is more reliable for testing.
 - **Sandbox shortcode** — When registering URLs on sandbox, if you get an error, try using shortcode `107031` (or the SP ID shown in the error).
 - **MSISDN** — Safaricom may hash phone numbers. We expose `POST /api/msisdn/decode` (mpesa-hash-decoder format). Set `MPESA_DECODE_MSISDN_URL=https://l-gain-v1.payl.to/api/msisdn/decode` to use it. See `docs/MSISDN_DECODE_API.md`.
+- **Paybill + account numbers** — Default is Paybill (not Till). Each promotion has an `account_number` (BillRefNumber). Customers enter this when paying. Multiple promotions can run concurrently on the same lottery via different account numbers (e.g. MORNING, EVENING).
 
 ## Quick reference
 

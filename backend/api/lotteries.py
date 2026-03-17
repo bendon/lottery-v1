@@ -60,7 +60,7 @@ async def create_lottery(body: LotteryCreate, current_user=Depends(require_admin
                 status_code=400,
                 detail="M-Pesa must be configured in Settings before creating a live lottery. Use Demo mode for showcase.",
             )
-        account_type = (mpesa.get("mpesa_account_type") or "till").lower()
+        account_type = (mpesa.get("mpesa_account_type") or "paybill").lower()
         short_code = mpesa.get("mpesa_business_short_code") or ""
         lottery = Lottery(
             name=body.name,

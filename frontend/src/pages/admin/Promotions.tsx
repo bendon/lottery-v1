@@ -301,6 +301,7 @@ export default function AdminPromotions() {
     user_id: "",
     lottery_id: "",
     name: "",
+    account_number: "",
     start_date: "",
     end_date: "",
   });
@@ -328,7 +329,7 @@ export default function AdminPromotions() {
     try {
       await api.post("/api/admin/promotions", form);
       setShowPromoModal(false);
-      setForm({ user_id: "", lottery_id: "", name: "", start_date: "", end_date: "" });
+      setForm({ user_id: "", lottery_id: "", name: "", account_number: "", start_date: "", end_date: "" });
       load();
     } catch (err: any) {
       setError(err.response?.data?.detail || "Error creating promotion");
@@ -442,7 +443,14 @@ export default function AdminPromotions() {
               const meta = user?.user_type ? TYPE_META[user.user_type] : null;
               return (
                 <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-gray-900">{p.name || "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium text-gray-900">{p.name || "—"}</span>
+                      {p.account_number && (
+                        <span className="text-[10px] text-gray-500 font-mono">Account: {p.account_number}</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     {user ? (
                       <div className="flex flex-col gap-0.5">
@@ -602,6 +610,18 @@ export default function AdminPromotions() {
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-black"
                 />
+              </div>
+
+              {/* Paybill Account (enables concurrent promotions) */}
+              <div>
+                <label className="block text-xs font-medium mb-1">Paybill Account Number</label>
+                <input
+                  placeholder="e.g. MORNING, EVENING (customers enter this when paying)"
+                  value={form.account_number}
+                  onChange={(e) => setForm((f) => ({ ...f, account_number: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-black"
+                />
+                <p className="text-[10px] text-gray-400 mt-0.5">BillRefNumber — unique per promotion for same lottery</p>
               </div>
 
               {/* Dates */}

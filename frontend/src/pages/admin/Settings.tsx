@@ -300,7 +300,7 @@ export default function AdminSettings() {
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
               >
                 <option value="till">Till (Buy Goods / Lipa Na M-Pesa)</option>
-                <option value="paybill">PayBill</option>
+                <option value="paybill">PayBill (uses account numbers for concurrent promotions)</option>
               </select>
             </div>
 

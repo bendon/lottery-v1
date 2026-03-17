@@ -13,8 +13,10 @@ class Transaction(Document):
     payment_date: datetime = Field(default_factory=datetime.utcnow)
     product_type: Optional[str] = None  # "lottery"
     product_id: Optional[PydanticObjectId] = None
+    promotion_id: Optional[PydanticObjectId] = None  # Set when Paybill account_number matches
     till_number: Optional[str] = None
     paybill_number: Optional[str] = None
+    bill_ref_number: Optional[str] = None  # Paybill account (BillRefNumber from C2B)
     api_integration_id: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -26,6 +28,8 @@ class Transaction(Document):
             "payment_type",
             "product_type",
             "product_id",
-            "till_number",
+            "promotion_id",
+            "paybill_number",
+            "bill_ref_number",
             "payment_date",
         ]
