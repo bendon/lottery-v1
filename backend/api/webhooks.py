@@ -5,6 +5,8 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, Request
 
 from backend.models.transaction import Transaction
+from backend.services.config_service import get_mpesa_config
+from backend.services.msisdn_decode_service import add_to_lookup, looks_like_plain_phone
 from backend.services.transaction_router import route_transaction
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
@@ -56,10 +58,14 @@ async def mpesa_c2b_confirmation(request: Request):
         last = data.get("LastName", "")
         customer_name = f"{first} {last}".strip() or None
 
+        # Derive payment_type from Safaricom TransactionType ("Pay Bill" | "Buy Goods" etc.)
+        trans_type = (data.get("TransactionType") or "").lower()
+        payment_type = "paybill" if "pay bill" in trans_type or "paybill" in trans_type else "till"
+
         # C2B sends BusinessShortCode - store for matching (Till and Paybill both use it)
         txn = Transaction(
             transaction_number=trans_id,
-            payment_type="till",
+            payment_type=payment_type,
             amount=amount_cents,
             customer_name=customer_name,
             customer_phone=str(data.get("MSISDN", "")),
@@ -70,6 +76,11 @@ async def mpesa_c2b_confirmation(request: Request):
         )
         await txn.insert()
         await route_transaction(txn)
+
+        # Build our own hash lookup when we receive plain phone (pre-hashing or STK)
+        msisdn = str(data.get("MSISDN", ""))
+        if msisdn and looks_like_plain_phone(msisdn):
+            await add_to_lookup(msisdn)
 
         return MPESA_ACK
     except Exception as e:
@@ -120,16 +131,27 @@ async def mpesa_stk_callback(request: Request):
         raw_amount = float(meta.get("Amount", 0))
         amount_cents = int(raw_amount * 100)
 
+        # STK callback doesn't include shortcode; use configured business shortcode for routing
+        mpesa_config = await get_mpesa_config()
+        shortcode = str(mpesa_config.get("mpesa_business_short_code") or "")
+
         txn = Transaction(
             transaction_number=receipt,
             payment_type="stk_push",
             amount=amount_cents,
             customer_phone=str(meta.get("PhoneNumber", "")),
             payment_date=datetime.utcnow(),
+            till_number=shortcode or None,
+            paybill_number=shortcode or None,
             metadata=data,
         )
         await txn.insert()
         await route_transaction(txn)
+
+        # Build our own hash lookup when we receive plain phone (STK sends plain)
+        phone = str(meta.get("PhoneNumber", ""))
+        if phone and looks_like_plain_phone(phone):
+            await add_to_lookup(phone)
 
         return MPESA_ACK
     except Exception as e:

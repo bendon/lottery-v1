@@ -6,11 +6,31 @@ from pydantic import BaseModel
 
 from backend.auth.dependencies import get_current_user, require_admin
 from backend.models.draw import Draw
+from backend.models.transaction import Transaction
 from backend.models.user import User
 from backend.services.draw_service import execute_draw, get_eligible_transactions
+from backend.services.msisdn_decode_service import decode_msisdn
 from backend.models.promotion import Promotion
 
 router = APIRouter(prefix="/api/draws", tags=["draws"])
+
+
+async def _build_winner_response(draw: Draw, current_user: User) -> Optional[dict]:
+    """Build winner details with decoded phone for draw response."""
+    txn = await Transaction.get(draw.transaction_id)
+    if not txn:
+        return None
+    phone_raw = txn.customer_phone or ""
+    phone_decoded = await decode_msisdn(phone_raw) if phone_raw else None
+    phone_display = phone_decoded or phone_raw
+    if current_user.role != "admin" and phone_display:
+        phone_display = phone_display[:3] + "*" * max(0, len(phone_display) - 5) + phone_display[-2:] if len(phone_display) > 4 else "***"
+    return {
+        "transaction_number": txn.transaction_number,
+        "customer_name": txn.customer_name or "—",
+        "customer_phone": phone_display or "—",
+        "amount": txn.amount,
+    }
 
 
 class DrawCreate(BaseModel):
@@ -35,7 +55,9 @@ async def create_draw(body: DrawCreate, current_user: User = Depends(get_current
         draw_type=body.draw_type,
         notes=body.notes,
     )
-    return {"id": str(draw.id), **draw.dict()}
+    # Include winner details with decoded phone when available
+    winner_resp = await _build_winner_response(draw, current_user)
+    return {"id": str(draw.id), **draw.dict(), "winner": winner_resp}
 
 
 @router.get("")
@@ -71,3 +93,47 @@ async def get_draw(draw_id: PydanticObjectId, current_user: User = Depends(get_c
     if current_user.role != "admin" and str(draw.presenter_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="Access denied")
     return {"id": str(draw.id), **draw.dict()}
+
+
+@router.get("/{draw_id}/winner")
+async def get_draw_winner(
+    draw_id: PydanticObjectId,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get winner details for a draw, including decoded phone.
+    Admin sees full phone; presenter sees masked.
+    """
+    draw = await Draw.get(draw_id)
+    if not draw:
+        raise HTTPException(status_code=404, detail="Draw not found")
+    if current_user.role != "admin" and str(draw.presenter_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    txn = await Transaction.get(draw.transaction_id)
+    if not txn:
+        return {"draw_id": str(draw.id), "winning_number": draw.winning_number, "winner": None}
+
+    phone_raw = txn.customer_phone or ""
+    phone_decoded = await decode_msisdn(phone_raw) if phone_raw else None
+    phone_display = phone_decoded or phone_raw
+
+    # Mask for presenters
+    if current_user.role != "admin" and phone_display:
+        if len(phone_display) <= 4:
+            phone_display = "***"
+        else:
+            phone_display = phone_display[:3] + "*" * (len(phone_display) - 5) + phone_display[-2:]
+
+    return {
+        "draw_id": str(draw.id),
+        "winning_number": draw.winning_number,
+        "drawn_at": draw.drawn_at,
+        "winner": {
+            "transaction_number": txn.transaction_number,
+            "customer_name": txn.customer_name or "—",
+            "customer_phone": phone_display or "—",
+            "amount": txn.amount,
+            "payment_date": txn.payment_date,
+        },
+    }

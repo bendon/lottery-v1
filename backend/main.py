@@ -20,6 +20,7 @@ from backend.api import (
     notifications,
     payments,
     mpesa_admin,
+    msisdn,
 )
 from backend.auth.jwt import hash_password
 from backend.models.user import User
@@ -79,6 +80,7 @@ app.include_router(webhooks.router)
 app.include_router(notifications.router)
 app.include_router(payments.router)
 app.include_router(mpesa_admin.router)
+app.include_router(msisdn.router)
 
 
 @app.get("/")

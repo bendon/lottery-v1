@@ -24,6 +24,7 @@ MPESA_KEYS = [
     "mpesa_callback_url",
     "mpesa_c2b_confirmation_url",
     "mpesa_c2b_validation_url",
+    "mpesa_decode_msisdn_url",
 ]
 
 ENV_TO_MPESA_KEY = {
@@ -36,6 +37,7 @@ ENV_TO_MPESA_KEY = {
     "MPESA_CALLBACK_URL": "mpesa_callback_url",
     "MPESA_C2B_CONFIRMATION_URL": "mpesa_c2b_confirmation_url",
     "MPESA_C2B_VALIDATION_URL": "mpesa_c2b_validation_url",
+    "MPESA_DECODE_MSISDN_URL": "mpesa_decode_msisdn_url",
 }
 
 _cache: dict = {}
@@ -64,6 +66,7 @@ async def get_mpesa_config() -> dict:
         "mpesa_callback_url": env.MPESA_CALLBACK_URL,
         "mpesa_c2b_confirmation_url": env.MPESA_C2B_CONFIRMATION_URL,
         "mpesa_c2b_validation_url": env.MPESA_C2B_VALIDATION_URL,
+        "mpesa_decode_msisdn_url": getattr(env, "MPESA_DECODE_MSISDN_URL", "") or "",
     }
 
     db_settings = await SystemSetting.find({"key": {"$in": MPESA_KEYS}}).to_list()

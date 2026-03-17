@@ -22,25 +22,19 @@ async def get_eligible_transactions(promotion: Promotion) -> List[Transaction]:
     won_draws = await Draw.find_all().to_list()
     won_transaction_ids = {d.transaction_id for d in won_draws}
 
-    # Build base query
+    # Build base query - use promotion's date range (only one active at a time)
     query: dict = {
         "product_type": "lottery",
         "product_id": lottery.id,
         "payment_type": {"$in": lottery.payment_types},
+        "payment_date": {"$gte": promotion.start_date, "$lte": promotion.end_date},
     }
 
     # Apply lottery-specific settings
     lottery_settings = lottery.settings or {}
     min_amount = lottery_settings.get("min_amount")
-    date_from = lottery_settings.get("date_from")
-    date_to = lottery_settings.get("date_to")
-
     if min_amount:
         query["amount"] = {"$gte": int(min_amount)}
-    if date_from:
-        query.setdefault("payment_date", {})["$gte"] = datetime.fromisoformat(date_from)
-    if date_to:
-        query.setdefault("payment_date", {})["$lte"] = datetime.fromisoformat(date_to)
 
     transactions = await Transaction.find(query).to_list()
     return [t for t in transactions if t.id not in won_transaction_ids]

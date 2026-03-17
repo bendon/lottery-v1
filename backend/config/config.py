@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     MPESA_C2B_CONFIRMATION_URL: str = ""   # Public HTTPS URL for C2B confirmations
     MPESA_C2B_VALIDATION_URL: str = ""     # Public HTTPS URL for C2B validations
 
+    # Your own MSISDN decode API (mpesa-hash-decoder format)
+    # POST { hashedPhone, algo: "Sha256" } -> { success, data: { phone, sha256Hash } }
+    MPESA_DECODE_MSISDN_URL: str = ""
+
     class Config:
         env_file = ".env"
 

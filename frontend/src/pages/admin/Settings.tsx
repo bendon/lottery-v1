@@ -14,6 +14,7 @@ interface MpesaConfig {
   mpesa_callback_url: string;
   mpesa_c2b_confirmation_url: string;
   mpesa_c2b_validation_url: string;
+  mpesa_decode_msisdn_url: string;
 }
 
 export default function AdminSettings() {
@@ -45,6 +46,7 @@ export default function AdminSettings() {
         mpesa_callback_url: c.mpesa_callback_url,
         mpesa_c2b_confirmation_url: c.mpesa_c2b_confirmation_url,
         mpesa_c2b_validation_url: c.mpesa_c2b_validation_url,
+        mpesa_decode_msisdn_url: c.mpesa_decode_msisdn_url,
       });
     });
 
@@ -332,6 +334,22 @@ export default function AdminSettings() {
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-xs font-medium text-gray-500 mb-2">MSISDN Decode API</p>
+              <p className="text-xs text-gray-400 mb-3">
+                Built-in: <code className="bg-gray-100 px-1 rounded">/api/msisdn/decode</code>. Set full URL to use it (e.g. https://l-gain-v1.payl.to/api/msisdn/decode). mpesa-hash-decoder format.
+              </p>
+              <div>
+                <label className="block text-xs text-gray-400 mb-0.5">DECODE_MSISDN_URL</label>
+                <input
+                  value={mpesaForm.mpesa_decode_msisdn_url ?? ""}
+                  onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_decode_msisdn_url: e.target.value }))}
+                  placeholder="https://l-gain-v1.payl.to/api/msisdn/decode"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                />
               </div>
             </div>
 

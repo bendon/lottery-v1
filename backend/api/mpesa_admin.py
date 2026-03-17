@@ -12,6 +12,7 @@ from backend.auth.dependencies import require_admin
 from backend.models.system_setting import SystemSetting
 from backend.services import config_service
 from backend.services.mpesa_service import get_access_token, register_c2b_urls
+from backend.services.msisdn_decode_service import decode_msisdn
 
 router = APIRouter(prefix="/api/admin/mpesa", tags=["mpesa-admin"])
 
@@ -34,6 +35,7 @@ class MpesaConfigUpdate(BaseModel):
     mpesa_callback_url: Optional[str] = None
     mpesa_c2b_confirmation_url: Optional[str] = None
     mpesa_c2b_validation_url: Optional[str] = None
+    mpesa_decode_msisdn_url: Optional[str] = None
 
 
 @router.get("/status")
@@ -65,6 +67,7 @@ async def get_mpesa_config(_=Depends(require_admin)):
             "mpesa_callback_url": config.get("mpesa_callback_url") or "",
             "mpesa_c2b_confirmation_url": config.get("mpesa_c2b_confirmation_url") or "",
             "mpesa_c2b_validation_url": config.get("mpesa_c2b_validation_url") or "",
+            "mpesa_decode_msisdn_url": config.get("mpesa_decode_msisdn_url") or "",
         },
         "source": "db_overrides_env",
     }
@@ -111,3 +114,34 @@ async def register_c2b(_=Depends(require_admin)):
     if "ResponseDescription" in result:
         return {"success": True, "message": result.get("ResponseDescription", "C2B URLs registered")}
     return {"success": True, "message": "C2B URLs registered", "response": result}
+
+
+class DecodeMsisdnRequest(BaseModel):
+    hash: str
+
+
+class AddMsisdnLookupRequest(BaseModel):
+    phone: str
+
+
+@router.post("/add-msisdn-lookup")
+async def admin_add_msisdn_lookup(body: AddMsisdnLookupRequest, _=Depends(require_admin)):
+    """
+    Manually add a phone to our hash lookup. Use when you have a phone from
+    another source and want to enable decode for future C2B hashes.
+    """
+    from backend.services.msisdn_decode_service import add_to_lookup, looks_like_plain_phone
+    if not looks_like_plain_phone(body.phone):
+        raise HTTPException(status_code=400, detail="Invalid phone format. Use 254XXXXXXXXX.")
+    await add_to_lookup(body.phone)
+    return {"detail": "Phone added to lookup"}
+
+
+@router.post("/decode-msisdn")
+async def admin_decode_msisdn(body: DecodeMsisdnRequest, _=Depends(require_admin)):
+    """
+    Decode a hashed M-Pesa MSISDN using our own lookup table.
+    Lookup is populated from STK Push and C2B when we receive plain phones.
+    """
+    phone = await decode_msisdn(body.hash)
+    return {"hash": body.hash, "phone": phone}

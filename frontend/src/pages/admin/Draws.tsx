@@ -60,6 +60,7 @@ export default function AdminDraws() {
   const [lastDraw, setLastDraw] = useState<Draw | null>(null);
   const [error, setError] = useState("");
   const [, setTick] = useState(0);
+  const [winnerModal, setWinnerModal] = useState<{ drawId: string; data: any } | null>(null);
 
   const lotteryMap = Object.fromEntries(lotteries.map((l) => [l.id, l]));
   const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
@@ -93,6 +94,15 @@ export default function AdminDraws() {
       .then((r) => setEligible(r.data))
       .catch(() => setEligible([]));
   }, [selectedId]);
+
+  const viewWinner = async (drawId: string) => {
+    try {
+      const r = await api.get(`/api/draws/${drawId}/winner`);
+      setWinnerModal({ drawId, data: r.data });
+    } catch {
+      setWinnerModal(null);
+    }
+  };
 
   const handleDraw = async () => {
     setError("");
@@ -243,6 +253,12 @@ export default function AdminDraws() {
                   <div className="mb-4 px-5 py-4 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Winner</p>
                     <p className="text-2xl font-mono font-bold text-green-900">{lastDraw.winning_number}</p>
+                    {(lastDraw as any).winner && (
+                      <div className="mt-2 text-sm text-green-800 space-y-0.5">
+                        <p>{(lastDraw as any).winner.customer_name}</p>
+                        <p className="font-mono text-xs">{(lastDraw as any).winner.customer_phone}</p>
+                      </div>
+                    )}
                     <p className="text-xs text-green-600 mt-1">{formatDate(lastDraw.drawn_at)}</p>
                   </div>
                 )}
@@ -285,12 +301,13 @@ export default function AdminDraws() {
               <th className="px-4 py-3 text-left">Presenter</th>
               <th className="px-4 py-3 text-left">Type</th>
               <th className="px-4 py-3 text-left">Drawn At</th>
+              <th className="px-4 py-3 text-left"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {draws.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                   No draws yet
                 </td>
               </tr>
@@ -310,6 +327,14 @@ export default function AdminDraws() {
                     </td>
                     <td className="px-4 py-3 capitalize">{d.draw_type}</td>
                     <td className="px-4 py-3 text-gray-400 text-xs">{formatDate(d.drawn_at)}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => viewWinner(d.id)}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        Winner
+                      </button>
+                    </td>
                   </tr>
                 );
               })
@@ -317,6 +342,28 @@ export default function AdminDraws() {
           </tbody>
         </table>
       </div>
+
+      {/* Winner modal */}
+      {winnerModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setWinnerModal(null)}>
+          <div className="bg-white rounded-xl border shadow-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="font-bold">Winner Details</h3>
+              <button onClick={() => setWinnerModal(null)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            {winnerModal.data.winner ? (
+              <div className="space-y-2 text-sm">
+                <p><span className="text-gray-500">Ref:</span> <span className="font-mono">{winnerModal.data.winning_number}</span></p>
+                <p><span className="text-gray-500">Name:</span> {winnerModal.data.winner.customer_name}</p>
+                <p><span className="text-gray-500">Phone:</span> <span className="font-mono">{winnerModal.data.winner.customer_phone}</span></p>
+                <p><span className="text-gray-500">Amount:</span> {formatAmount(winnerModal.data.winner.amount)}</p>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">No winner data</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

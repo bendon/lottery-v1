@@ -98,6 +98,12 @@ Ensure MongoDB is running and reachable. Update `MONGODB_URL` in `.env` if it's 
 
 After deployment, log in to the admin panel and go to **Settings → M-Pesa** → click **Register C2B URLs**.
 
+**M-Pesa C2B notes** (from [Safaricom Daraja integration guides](https://www.linkedin.com/pulse/complete-guide-integrating-mpesa-c2b-receive-alerts-payments-thuo-kphef/)):
+- **Production uses C2B v2** — Safaricom’s email may mention v1; use v2 (`/mpesa/c2b/v2/registerurl`) for production.
+- **Sandbox callbacks are unreliable** — Daraja sandbox often fails to send callbacks; live/production is more reliable for testing.
+- **Sandbox shortcode** — When registering URLs on sandbox, if you get an error, try using shortcode `107031` (or the SP ID shown in the error).
+- **MSISDN** — Safaricom may hash phone numbers. We expose `POST /api/msisdn/decode` (mpesa-hash-decoder format). Set `MPESA_DECODE_MSISDN_URL=https://l-gain-v1.payl.to/api/msisdn/decode` to use it. See `docs/MSISDN_DECODE_API.md`.
+
 ## Quick reference
 
 | Component | Location |

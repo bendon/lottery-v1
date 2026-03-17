@@ -305,6 +305,9 @@ export default function PresenterDashboard() {
                   <div className="mt-3 px-4 py-3 bg-green-50 border border-green-200 rounded">
                     <p className="text-sm font-semibold text-green-800">Winner drawn!</p>
                     <p className="text-lg font-mono font-bold mt-1">{lastDraw.winning_number}</p>
+                    {(lastDraw as any).winner && (
+                      <p className="text-sm text-green-700 mt-1">{(lastDraw as any).winner.customer_name} · {(lastDraw as any).winner.customer_phone}</p>
+                    )}
                     <p className="text-xs text-green-600 mt-0.5">{formatDate(lastDraw.drawn_at)}</p>
                   </div>
                 )}

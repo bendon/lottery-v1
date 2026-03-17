@@ -41,20 +41,21 @@ async def admin_stats(_=Depends(require_admin)):
 
 @router.get("/api/dashboard/stats")
 async def presenter_stats(current_user: User = Depends(get_current_user)):
+    active = await Promotion.find_one({"status": "active", "user_id": current_user.id})
     my_promotions = await Promotion.find({"user_id": current_user.id}).to_list()
     my_promotion_ids = [p.id for p in my_promotions]
-
-    active_promotions = [p for p in my_promotions if p.status == "active"]
 
     draws_count = 0
     transactions_count = 0
     if my_promotion_ids:
         draws_count = await Draw.find({"promotion_id": {"$in": my_promotion_ids}}).count()
 
-    lottery_ids = list({p.lottery_id for p in my_promotions})
-    if lottery_ids:
+    if active:
         transactions_count = await Transaction.find(
-            {"product_id": {"$in": lottery_ids}}
+            {
+                "product_id": active.lottery_id,
+                "payment_date": {"$gte": active.start_date, "$lte": active.end_date},
+            }
         ).count()
 
     recent_draws = []
@@ -67,7 +68,7 @@ async def presenter_stats(current_user: User = Depends(get_current_user)):
         )
 
     return {
-        "active_promotions": len(active_promotions),
+        "active_promotions": 1 if active else 0,
         "total_promotions": len(my_promotions),
         "total_draws": draws_count,
         "total_transactions": transactions_count,

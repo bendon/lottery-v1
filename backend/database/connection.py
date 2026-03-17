@@ -16,6 +16,7 @@ async def init_db():
     from backend.models.transaction import Transaction
     from backend.models.draw import Draw
     from backend.models.system_setting import SystemSetting
+    from backend.models.msisdn_hash_lookup import MsisdnHashLookup
     from backend.models.payment_provider import PaymentProvider
     from backend.models.webhook import Webhook, WebhookLog
     from backend.models.smtp_config import SMTPConfiguration
@@ -31,6 +32,7 @@ async def init_db():
             Transaction,
             Draw,
             SystemSetting,
+            MsisdnHashLookup,
             PaymentProvider,
             Webhook,
             WebhookLog,

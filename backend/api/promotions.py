@@ -28,8 +28,20 @@ class PromotionUpdate(BaseModel):
     status: Optional[str] = None
 
 
+async def _deactivate_other_promotions(exclude_id: Optional[PydanticObjectId] = None):
+    """Ensure only one promotion is active: set all others to completed."""
+    query = {"status": "active"}
+    if exclude_id:
+        query["_id"] = {"$ne": exclude_id}
+    others = await Promotion.find(query).to_list()
+    for p in others:
+        await p.set({"status": "completed"})
+
+
 @router.post("/api/admin/promotions")
 async def create_promotion(body: PromotionCreate, current_user=Depends(require_admin)):
+    if body.status == "active":
+        await _deactivate_other_promotions()
     promotion = Promotion(
         user_id=PydanticObjectId(body.user_id),
         lottery_id=PydanticObjectId(body.lottery_id),
@@ -62,7 +74,10 @@ async def update_promotion(promotion_id: PydanticObjectId, body: PromotionUpdate
     p = await Promotion.get(promotion_id)
     if not p:
         raise HTTPException(status_code=404, detail="Promotion not found")
-    await p.set({k: v for k, v in body.dict().items() if v is not None})
+    updates = {k: v for k, v in body.dict().items() if v is not None}
+    if updates.get("status") == "active":
+        await _deactivate_other_promotions(exclude_id=promotion_id)
+    await p.set(updates)
     return {"id": str(p.id), **p.dict()}
 
 
@@ -77,14 +92,11 @@ async def delete_promotion(promotion_id: PydanticObjectId, _=Depends(require_adm
 
 @router.get("/api/promotions")
 async def my_promotions(current_user=Depends(get_current_user)):
-    """Presenter view: all active promotions assigned to this user."""
-    promotions = await Promotion.find(
-        {
-            "user_id": current_user.id,
-            "status": "active",
-        }
-    ).to_list()
-    return [{"id": str(p.id), **p.dict()} for p in promotions]
+    """Presenter view: the single active promotion assigned to this user (only one active globally)."""
+    active = await Promotion.find_one({"status": "active"})
+    if not active or active.user_id != current_user.id:
+        return []
+    return [{"id": str(active.id), **active.dict()}]
 
 
 def _mask_phone(phone: str) -> str:
@@ -120,17 +132,21 @@ def _mask_txn(txn_number: str) -> str:
 @router.get("/api/transactions")
 async def presenter_transactions(current_user=Depends(get_current_user)):
     """
-    Presenter view: masked transactions for lotteries linked to this user's promotions.
+    Presenter view: masked transactions for the single active promotion only.
+    Only transactions within the promotion's start_date..end_date are shown.
     PII (name, phone, full transaction number) is redacted.
+    Admin sees all transactions via /api/admin/transactions.
     """
-    promotions = await Promotion.find({"user_id": current_user.id}).to_list()
-    lottery_ids = list({p.lottery_id for p in promotions})
-
-    if not lottery_ids:
+    active = await Promotion.find_one({"status": "active"})
+    if not active or active.user_id != current_user.id:
         return []
 
+    query = {
+        "product_id": active.lottery_id,
+        "payment_date": {"$gte": active.start_date, "$lte": active.end_date},
+    }
     txns = (
-        await Transaction.find({"product_id": {"$in": lottery_ids}})
+        await Transaction.find(query)
         .sort("-payment_date")
         .limit(200)
         .to_list()
