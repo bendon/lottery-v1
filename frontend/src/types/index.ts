@@ -21,6 +21,7 @@ export interface Lottery {
   payment_types: string[];
   payout_amount?: number;
   payout_percentage?: number;
+  settings?: Record<string, unknown>;
   is_active: boolean;
   created_at: string;
 }

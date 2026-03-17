@@ -11,19 +11,25 @@ const STEPS = [
   { id: 3, label: "Draw Settings" },
 ];
 
-const emptyConfig = (l: Lottery) => ({
+interface ConfigForm {
+  description: string;
+  lottery_type: string;
+  payout_amount: string;
+  payout_percentage: string;
+  settings: { min_amount: string; date_from: string; date_to: string };
+}
+
+const emptyConfig = (l: Lottery): ConfigForm => ({
   description: l.description || "",
   lottery_type: l.lottery_type,
   payout_amount: l.payout_amount ? String(l.payout_amount / 100) : "",
   payout_percentage: "",
   settings: {
-    min_amount: (l.settings as any)?.min_amount || "",
-    date_from: (l.settings as any)?.date_from || "",
-    date_to: (l.settings as any)?.date_to || "",
+    min_amount: String((l.settings as Record<string, unknown>)?.["min_amount"] ?? ""),
+    date_from: String((l.settings as Record<string, unknown>)?.["date_from"] ?? ""),
+    date_to: String((l.settings as Record<string, unknown>)?.["date_to"] ?? ""),
   },
 });
-
-type ConfigForm = ReturnType<typeof emptyConfig>;
 
 export default function AdminLotteries() {
   const [lotteries, setLotteries] = useState<Lottery[]>([]);
@@ -31,7 +37,7 @@ export default function AdminLotteries() {
 
   // Create modal
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", description: "", lottery_type: "random_pick" as const, is_demo: false });
+  const [createForm, setCreateForm] = useState<{ name: string; description: string; lottery_type: "random_pick" | "sequential"; is_demo: boolean }>({ name: "", description: "", lottery_type: "random_pick", is_demo: false });
   const [createError, setCreateError] = useState("");
 
   // Configure multi-step modal
@@ -357,7 +363,7 @@ export default function AdminLotteries() {
                     <label className="block text-xs font-medium mb-1">Minimum Entry Amount (KES)</label>
                     <input
                       type="number"
-                      value={configForm.settings.min_amount}
+                      value={configForm.settings.min_amount ?? ""}
                       onChange={(e) => setConfigForm((f) => f ? { ...f, settings: { ...f.settings, min_amount: e.target.value } } : f)}
                       className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
                       placeholder="e.g. 50"
@@ -388,7 +394,7 @@ export default function AdminLotteries() {
                     <label className="block text-xs font-medium mb-1">Eligible Transactions From</label>
                     <input
                       type="datetime-local"
-                      value={configForm.settings.date_from}
+                      value={configForm.settings.date_from ?? ""}
                       onChange={(e) => setConfigForm((f) => f ? { ...f, settings: { ...f.settings, date_from: e.target.value } } : f)}
                       className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
                     />
@@ -397,7 +403,7 @@ export default function AdminLotteries() {
                     <label className="block text-xs font-medium mb-1">Eligible Transactions Until</label>
                     <input
                       type="datetime-local"
-                      value={configForm.settings.date_to}
+                      value={configForm.settings.date_to ?? ""}
                       onChange={(e) => setConfigForm((f) => f ? { ...f, settings: { ...f.settings, date_to: e.target.value } } : f)}
                       className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
                     />

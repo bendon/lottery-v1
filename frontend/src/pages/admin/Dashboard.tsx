@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "@/api/client";
-import { formatAmount, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { Draw } from "@/types";
 
 interface Stats {
