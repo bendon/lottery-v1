@@ -2,19 +2,60 @@ import { useEffect, useState } from "react";
 import api from "@/api/client";
 import { SystemSetting } from "@/types";
 
+type Tab = "general" | "mpesa";
+
+interface MpesaConfig {
+  mpesa_consumer_key: string;
+  mpesa_consumer_secret: string;
+  mpesa_business_short_code: string;
+  mpesa_passkey: string;
+  mpesa_base_url: string;
+  mpesa_account_type: string;
+  mpesa_callback_url: string;
+  mpesa_c2b_confirmation_url: string;
+  mpesa_c2b_validation_url: string;
+}
+
 export default function AdminSettings() {
+  const [tab, setTab] = useState<Tab>("general");
   const [settings, setSettings] = useState<SystemSetting[]>([]);
   const [definitions, setDefinitions] = useState<any[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
 
+  // M-Pesa
+  const [mpesaConfig, setMpesaConfig] = useState<MpesaConfig | null>(null);
+  const [mpesaForm, setMpesaForm] = useState<Partial<MpesaConfig>>({});
+  const [mpesaSaving, setMpesaSaving] = useState(false);
+  const [mpesaAction, setMpesaAction] = useState<string | null>(null);
+  const [mpesaError, setMpesaError] = useState("");
+
   const load = () =>
     api.get<SystemSetting[]>("/api/admin/settings").then((r) => setSettings(r.data));
+
+  const loadMpesa = () =>
+    api.get<{ config: MpesaConfig }>("/api/admin/mpesa/config").then((r) => {
+      const c = r.data.config;
+      setMpesaConfig(c);
+      // Pre-fill non-secrets; leave secrets empty (masked values not editable)
+      setMpesaForm({
+        mpesa_business_short_code: c.mpesa_business_short_code,
+        mpesa_base_url: c.mpesa_base_url,
+        mpesa_account_type: c.mpesa_account_type,
+        mpesa_callback_url: c.mpesa_callback_url,
+        mpesa_c2b_confirmation_url: c.mpesa_c2b_confirmation_url,
+        mpesa_c2b_validation_url: c.mpesa_c2b_validation_url,
+      });
+    });
 
   useEffect(() => {
     load();
     api.get<any[]>("/api/admin/setting-types").then((r) => setDefinitions(r.data));
   }, []);
+
+  useEffect(() => {
+    if (tab === "mpesa") loadMpesa();
+  }, [tab]);
 
   const save = async (key: string) => {
     await api.put(`/api/admin/settings/${key}`, { value: editValue });
@@ -32,13 +73,74 @@ export default function AdminSettings() {
     load();
   };
 
+  const saveMpesa = async () => {
+    setMpesaSaving(true);
+    setMpesaError("");
+    try {
+      await api.put("/api/admin/mpesa/config", mpesaForm);
+      loadMpesa();
+    } catch (e: any) {
+      setMpesaError(e.response?.data?.detail || "Failed to save");
+    } finally {
+      setMpesaSaving(false);
+    }
+  };
+
+  const testOauth = async () => {
+    setMpesaAction("oauth");
+    setMpesaError("");
+    try {
+      const r = await api.post<{ success: boolean; message: string }>("/api/admin/mpesa/test-oauth");
+      setMpesaError(r.data.success ? "OAuth token retrieved successfully" : r.data.message);
+    } catch (e: any) {
+      setMpesaError(e.response?.data?.detail || "OAuth test failed");
+    } finally {
+      setMpesaAction(null);
+    }
+  };
+
+  const registerC2b = async () => {
+    setMpesaAction("c2b");
+    setMpesaError("");
+    try {
+      const r = await api.post<{ success?: boolean; message?: string }>("/api/admin/mpesa/register-c2b");
+      setMpesaError(r.data.message || "C2B URLs registered successfully");
+      loadMpesa();
+    } catch (e: any) {
+      setMpesaError(e.response?.data?.detail || "C2B registration failed");
+    } finally {
+      setMpesaAction(null);
+    }
+  };
+
   const existingKeys = new Set(settings.map((s) => s.key));
   const missing = definitions.filter((d) => !existingKeys.has(d.key));
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4">System Settings</h2>
+      <h2 className="text-xl font-bold mb-4">Settings</h2>
 
+      <div className="flex gap-2 mb-6 border-b border-gray-200">
+        <button
+          onClick={() => setTab("general")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            tab === "general" ? "border-black text-black" : "border-transparent text-gray-500 hover:text-black"
+          }`}
+        >
+          General
+        </button>
+        <button
+          onClick={() => setTab("mpesa")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            tab === "mpesa" ? "border-black text-black" : "border-transparent text-gray-500 hover:text-black"
+          }`}
+        >
+          M-Pesa
+        </button>
+      </div>
+
+      {tab === "general" && (
+        <>
       {missing.length > 0 && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
           <p className="font-medium mb-2">Available defaults not yet saved:</p>
@@ -110,6 +212,161 @@ export default function AdminSettings() {
           </tbody>
         </table>
       </div>
+        </>
+      )}
+
+      {tab === "mpesa" && (
+        <div className="space-y-6">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+            <p className="font-medium text-blue-900 mb-1">Cloud hosting required</p>
+            <p className="text-blue-800">
+              M-Pesa callbacks (STK Push, C2B) must be reachable via public HTTPS. Deploy to a cloud server
+              (e.g. AWS, DigitalOcean, Railway) and set the callback URLs to your domain. Localhost will not work.
+            </p>
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-6 space-y-4 max-w-2xl">
+            <h3 className="font-semibold">M-Pesa Daraja API</h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Consumer Key</label>
+                {mpesaConfig?.mpesa_consumer_key && (
+                  <p className="text-xs text-gray-400 mb-0.5 font-mono">Current: {mpesaConfig.mpesa_consumer_key}</p>
+                )}
+                <input
+                  value={mpesaForm.mpesa_consumer_key ?? ""}
+                  onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_consumer_key: e.target.value }))}
+                  placeholder="Enter new value to change"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Consumer Secret</label>
+                {mpesaConfig?.mpesa_consumer_secret && (
+                  <p className="text-xs text-gray-400 mb-0.5 font-mono">Current: {mpesaConfig.mpesa_consumer_secret}</p>
+                )}
+                <input
+                  type="password"
+                  value={mpesaForm.mpesa_consumer_secret ?? ""}
+                  onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_consumer_secret: e.target.value }))}
+                  placeholder="Enter new value to change"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Business Short Code (Till/Paybill)</label>
+                <input
+                  value={mpesaForm.mpesa_business_short_code ?? ""}
+                  onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_business_short_code: e.target.value }))}
+                  placeholder="e.g. 4561783"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Passkey</label>
+                {mpesaConfig?.mpesa_passkey && (
+                  <p className="text-xs text-gray-400 mb-0.5 font-mono">Current: {mpesaConfig.mpesa_passkey}</p>
+                )}
+                <input
+                  type="password"
+                  value={mpesaForm.mpesa_passkey ?? ""}
+                  onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_passkey: e.target.value }))}
+                  placeholder="Enter new value to change"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Base URL</label>
+              <select
+                value={mpesaForm.mpesa_base_url ?? "https://api.safaricom.co.ke"}
+                onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_base_url: e.target.value }))}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              >
+                <option value="https://api.safaricom.co.ke">Production (api.safaricom.co.ke)</option>
+                <option value="https://sandbox.safaricom.co.ke">Sandbox (sandbox.safaricom.co.ke)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Account Type</label>
+              <select
+                value={mpesaForm.mpesa_account_type ?? "till"}
+                onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_account_type: e.target.value }))}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              >
+                <option value="till">Till (Buy Goods / Lipa Na M-Pesa)</option>
+                <option value="paybill">PayBill</option>
+              </select>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-xs font-medium text-gray-500 mb-2">Callback URLs (must be public HTTPS)</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-0.5">STK Push Callback</label>
+                  <input
+                    value={mpesaForm.mpesa_callback_url ?? ""}
+                    onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_callback_url: e.target.value }))}
+                    placeholder="https://yourdomain.com/api/webhooks/mpesa/stk-callback"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-0.5">C2B Confirmation URL</label>
+                  <input
+                    value={mpesaForm.mpesa_c2b_confirmation_url ?? ""}
+                    onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_c2b_confirmation_url: e.target.value }))}
+                    placeholder="https://yourdomain.com/api/webhooks/mpesa/c2b"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-0.5">C2B Validation URL</label>
+                  <input
+                    value={mpesaForm.mpesa_c2b_validation_url ?? ""}
+                    onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_c2b_validation_url: e.target.value }))}
+                    placeholder="https://yourdomain.com/api/webhooks/mpesa/c2b/validate"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {mpesaError && (
+              <p className={`text-sm ${mpesaError.includes("successfully") ? "text-green-600" : "text-red-500"}`}>
+                {mpesaError}
+              </p>
+            )}
+
+            <div className="flex flex-wrap gap-3 pt-2">
+              <button
+                onClick={saveMpesa}
+                disabled={mpesaSaving}
+                className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+              >
+                {mpesaSaving ? "Saving..." : "Save Config"}
+              </button>
+              <button
+                onClick={testOauth}
+                disabled={!!mpesaAction}
+                className="border border-gray-300 px-4 py-2 rounded text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+              >
+                {mpesaAction === "oauth" ? "Testing..." : "Test OAuth"}
+              </button>
+              <button
+                onClick={registerC2b}
+                disabled={!!mpesaAction}
+                className="border border-gray-300 px-4 py-2 rounded text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+              >
+                {mpesaAction === "c2b" ? "Registering..." : "Register C2B URLs"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

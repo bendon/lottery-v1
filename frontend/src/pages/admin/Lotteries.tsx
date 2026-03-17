@@ -3,43 +3,35 @@ import api from "@/api/client";
 import { Lottery } from "@/types";
 import { formatAmount } from "@/lib/utils";
 
-// Card and STK Push are supplementary — Till/Paybill are derived from the short code type selection
-const EXTRA_PAYMENT_TYPES = ["card", "stk_push"];
+const DEMO_PAYBILL = "174379";
 
 const STEPS = [
-  { id: 1, label: "Payment Routing" },
+  { id: 1, label: "Payment Source" },
   { id: 2, label: "Pricing & Payout" },
   { id: 3, label: "Draw Settings" },
 ];
 
-const emptyConfig = (l: Lottery) => {
-  const isPaybill = !!l.paybill_number && !l.till_number;
-  return {
-    description: l.description || "",
-    lottery_type: l.lottery_type,
-    short_code_type: isPaybill ? "paybill" : "till",
-    short_code: l.till_number || l.paybill_number || "",
-    api_integration_id: "",
-    // payment_types: primary type auto-synced; store only extra types
-    extra_payment_types: (l.payment_types || []).filter((t) => EXTRA_PAYMENT_TYPES.includes(t)),
-    payout_amount: l.payout_amount ? String(l.payout_amount / 100) : "",
-    payout_percentage: "",
-    settings: {
-      min_amount: (l.settings as any)?.min_amount || "",
-      date_from: (l.settings as any)?.date_from || "",
-      date_to: (l.settings as any)?.date_to || "",
-    },
-  };
-};
+const emptyConfig = (l: Lottery) => ({
+  description: l.description || "",
+  lottery_type: l.lottery_type,
+  payout_amount: l.payout_amount ? String(l.payout_amount / 100) : "",
+  payout_percentage: "",
+  settings: {
+    min_amount: (l.settings as any)?.min_amount || "",
+    date_from: (l.settings as any)?.date_from || "",
+    date_to: (l.settings as any)?.date_to || "",
+  },
+});
 
 type ConfigForm = ReturnType<typeof emptyConfig>;
 
 export default function AdminLotteries() {
   const [lotteries, setLotteries] = useState<Lottery[]>([]);
+  const [mpesaActive, setMpesaActive] = useState<boolean | null>(null);
 
   // Create modal
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", description: "", lottery_type: "random_pick" });
+  const [createForm, setCreateForm] = useState({ name: "", description: "", lottery_type: "random_pick" as const, is_demo: false });
   const [createError, setCreateError] = useState("");
 
   // Configure multi-step modal
@@ -54,14 +46,23 @@ export default function AdminLotteries() {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    if (showCreate)
+      api.get<{ active: boolean }>("/api/admin/mpesa/status").then((r) => setMpesaActive(r.data.active)).catch(() => setMpesaActive(false));
+  }, [showCreate]);
+
   // --- Create ---
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError("");
+    if (!createForm.is_demo && !mpesaActive) {
+      setCreateError("Configure M-Pesa in Settings first, or use Demo mode.");
+      return;
+    }
     try {
       await api.post("/api/admin/lotteries", createForm);
       setShowCreate(false);
-      setCreateForm({ name: "", description: "", lottery_type: "random_pick" });
+      setCreateForm({ name: "", description: "", lottery_type: "random_pick", is_demo: false });
       load();
     } catch (err: any) {
       setCreateError(err.response?.data?.detail || "Error creating lottery");
@@ -81,19 +82,6 @@ export default function AdminLotteries() {
     setConfigForm(null);
   };
 
-  const toggleExtraType = (type: string) => {
-    setConfigForm((f) => {
-      if (!f) return f;
-      const has = f.extra_payment_types.includes(type);
-      return {
-        ...f,
-        extra_payment_types: has
-          ? f.extra_payment_types.filter((t) => t !== type)
-          : [...f.extra_payment_types, type],
-      };
-    });
-  };
-
   const handleSave = async () => {
     if (!configLottery || !configForm) return;
     setSaving(true);
@@ -104,16 +92,9 @@ export default function AdminLotteries() {
       if (configForm.settings.date_from) settings.date_from = configForm.settings.date_from;
       if (configForm.settings.date_to) settings.date_to = configForm.settings.date_to;
 
-      const isTill = configForm.short_code_type === "till";
-      const payment_types = [configForm.short_code_type, ...configForm.extra_payment_types];
-
       await api.put(`/api/admin/lotteries/${configLottery.id}`, {
         description: configForm.description || null,
         lottery_type: configForm.lottery_type,
-        till_number: isTill ? configForm.short_code || null : null,
-        paybill_number: !isTill ? configForm.short_code || null : null,
-        api_integration_id: configForm.api_integration_id || null,
-        payment_types,
         payout_amount: configForm.payout_amount ? Math.round(parseFloat(configForm.payout_amount) * 100) : null,
         payout_percentage: configForm.payout_percentage ? parseFloat(configForm.payout_percentage) : null,
         settings,
@@ -168,9 +149,12 @@ export default function AdminLotteries() {
                   <p className="font-medium">{l.name}</p>
                   {l.description && <p className="text-xs text-gray-400 mt-0.5">{l.description}</p>}
                 </td>
-                <td className="px-4 py-3 capitalize text-gray-600">{l.lottery_type.replace("_", " ")}</td>
+                <td className="px-4 py-3 capitalize text-gray-600">
+                  {l.lottery_type.replace("_", " ")}
+                  {l.is_demo && <span className="ml-1 text-xs text-amber-600">(Demo)</span>}
+                </td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                  {l.till_number || l.paybill_number || <span className="text-gray-300 italic">not set</span>}
+                  {l.till_number || l.paybill_number || <span className="text-gray-300 italic">—</span>}
                 </td>
                 <td className="px-4 py-3 text-gray-600">
                   {l.payout_amount ? formatAmount(l.payout_amount) : <span className="text-gray-300 italic">not set</span>}
@@ -201,8 +185,40 @@ export default function AdminLotteries() {
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg border p-6 w-full max-w-sm shadow-lg">
             <h3 className="font-bold mb-1">New Lottery</h3>
-            <p className="text-xs text-gray-400 mb-4">Configure payment details after creation.</p>
+            <p className="text-xs text-gray-400 mb-4">All lotteries use M-Pesa. Demo mode for showcase.</p>
             <form onSubmit={handleCreate} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium mb-2">Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCreateForm((f) => ({ ...f, is_demo: true }))}
+                    className={`flex flex-col items-start px-4 py-3 rounded-lg border text-left transition-colors ${
+                      createForm.is_demo ? "border-black bg-black text-white" : "border-gray-200 hover:border-gray-400 text-gray-700"
+                    }`}
+                  >
+                    <span className="text-sm font-semibold">Demo</span>
+                    <span className={`text-xs mt-0.5 ${createForm.is_demo ? "text-gray-300" : "text-gray-400"}`}>
+                      Paybill 174379 (showcase)
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreateForm((f) => ({ ...f, is_demo: false }))}
+                    className={`flex flex-col items-start px-4 py-3 rounded-lg border text-left transition-colors ${
+                      !createForm.is_demo ? "border-black bg-black text-white" : "border-gray-200 hover:border-gray-400 text-gray-700"
+                    }`}
+                  >
+                    <span className="text-sm font-semibold">Live</span>
+                    <span className={`text-xs mt-0.5 ${!createForm.is_demo ? "text-gray-300" : "text-gray-400"}`}>
+                      Uses configured M-Pesa
+                    </span>
+                  </button>
+                </div>
+                {!createForm.is_demo && mpesaActive === false && (
+                  <p className="text-xs text-amber-600 mt-2">Configure M-Pesa in Settings first.</p>
+                )}
+              </div>
               <div>
                 <label className="block text-xs font-medium mb-1">Name *</label>
                 <input
@@ -218,7 +234,7 @@ export default function AdminLotteries() {
                 <label className="block text-xs font-medium mb-1">Draw Type</label>
                 <select
                   value={createForm.lottery_type}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, lottery_type: e.target.value }))}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, lottery_type: e.target.value as "random_pick" | "sequential" }))}
                   className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
                 >
                   <option value="random_pick">Random Pick</option>
@@ -283,90 +299,24 @@ export default function AdminLotteries() {
             {/* Step content */}
             <div className="flex-1 overflow-y-auto px-6 py-5">
 
-              {/* Step 1 — Payment Routing */}
+              {/* Step 1 — Payment Source (read-only, from M-Pesa config or Demo) */}
               {configStep === 1 && (
                 <div className="space-y-5">
                   <p className="text-xs text-gray-500">
-                    M-Pesa uses a single Business Short Code for both Till and Paybill. Select the type, then enter the shared number.
+                    Payment is tied to M-Pesa. Demo lotteries use the showcase paybill; live lotteries use the configured M-Pesa from Settings.
                   </p>
-
-                  {/* Till vs Paybill toggle */}
-                  <div>
-                    <label className="block text-xs font-medium mb-2">Short Code Type</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(["till", "paybill"] as const).map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setConfigForm((f) => f ? { ...f, short_code_type: type } : f)}
-                          className={`flex flex-col items-start px-4 py-3 rounded-lg border text-left transition-colors ${
-                            configForm.short_code_type === type
-                              ? "border-black bg-black text-white"
-                              : "border-gray-200 hover:border-gray-400 text-gray-700"
-                          }`}
-                        >
-                          <span className="text-sm font-semibold capitalize">{type}</span>
-                          <span className={`text-xs mt-0.5 ${configForm.short_code_type === type ? "text-gray-300" : "text-gray-400"}`}>
-                            {type === "till"
-                              ? "Simple payment, no account ref"
-                              : "Supports account reference numbers"}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Single short code field */}
-                  <div>
-                    <label className="block text-xs font-medium mb-1">
-                      Business Short Code
-                    </label>
-                    <input
-                      value={configForm.short_code}
-                      onChange={(e) => setConfigForm((f) => f ? { ...f, short_code: e.target.value } : f)}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
-                      placeholder={configForm.short_code_type === "till" ? "e.g. 123456" : "e.g. 400200"}
-                    />
-                    {configForm.short_code_type === "paybill" && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        Players send to this Paybill and use their account reference (e.g. phone or ID) as the account number.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* API Integration ID */}
-                  <div>
-                    <label className="block text-xs font-medium mb-1">API Integration ID <span className="text-gray-400 font-normal">(optional)</span></label>
-                    <input
-                      value={configForm.api_integration_id}
-                      onChange={(e) => setConfigForm((f) => f ? { ...f, api_integration_id: e.target.value } : f)}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
-                      placeholder="For third-party integrations"
-                    />
-                  </div>
-
-                  {/* Additional payment channels */}
-                  <div>
-                    <label className="block text-xs font-medium mb-1">Also accept via</label>
-                    <p className="text-xs text-gray-400 mb-2">
-                      {configForm.short_code_type === "till" ? "Till" : "Paybill"} is already included. Enable additional channels below.
+                  <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
+                    <p className="text-xs font-medium text-gray-500 mb-1">Payment Source</p>
+                    <p className="font-mono text-sm font-semibold">
+                      {configLottery.is_demo ? (
+                        <>Demo Paybill: {DEMO_PAYBILL}</>
+                      ) : (
+                        <>{configLottery.till_number || configLottery.paybill_number || "—"} (from Settings)</>
+                      )}
                     </p>
-                    <div className="flex gap-2">
-                      {EXTRA_PAYMENT_TYPES.map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => toggleExtraType(type)}
-                          className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                            configForm.extra_payment_types.includes(type)
-                              ? "bg-black text-white border-black"
-                              : "border-gray-300 text-gray-600 hover:border-gray-400"
-                          }`}
-                        >
-                          {type === "stk_push" ? "STK Push" : "Card"}
-                        </button>
-                      ))}
-                    </div>
+                    {configLottery.is_demo && (
+                      <p className="text-xs text-amber-600 mt-2">For showcasing only. Configure M-Pesa in Settings for live payments.</p>
+                    )}
                   </div>
                 </div>
               )}

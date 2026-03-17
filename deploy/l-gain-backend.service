@@ -1,0 +1,20 @@
+# Systemd service for L-Gain Lottery backend
+# Place in: /etc/systemd/system/l-gain-backend.service
+
+[Unit]
+Description=L-Gain Lottery API (FastAPI/Uvicorn)
+After=network.target mongodb.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/l-gain
+Environment="PATH=/var/www/l-gain/venv/bin"
+Environment="PYTHONPATH=/var/www/l-gain"
+ExecStart=/var/www/l-gain/venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

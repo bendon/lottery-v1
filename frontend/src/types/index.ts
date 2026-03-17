@@ -15,6 +15,7 @@ export interface Lottery {
   name: string;
   description?: string;
   lottery_type: string;
+  is_demo?: boolean;
   till_number?: string;
   paybill_number?: string;
   payment_types: string[];

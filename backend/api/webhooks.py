@@ -56,6 +56,7 @@ async def mpesa_c2b_confirmation(request: Request):
         last = data.get("LastName", "")
         customer_name = f"{first} {last}".strip() or None
 
+        # C2B sends BusinessShortCode - store for matching (Till and Paybill both use it)
         txn = Transaction(
             transaction_number=trans_id,
             payment_type="till",
@@ -64,6 +65,7 @@ async def mpesa_c2b_confirmation(request: Request):
             customer_phone=str(data.get("MSISDN", "")),
             payment_date=_parse_mpesa_time(data.get("TransTime")),
             till_number=shortcode,
+            paybill_number=shortcode,  # Same shortcode for both Till and Paybill
             metadata=data,
         )
         await txn.insert()

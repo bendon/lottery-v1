@@ -5,20 +5,13 @@ from backend.models.transaction import Transaction
 
 
 async def route_transaction(transaction: Transaction) -> Optional[Lottery]:
-    """Match transaction to a lottery based on till/paybill/api_integration_id."""
-    query_conditions = []
-
-    if transaction.till_number:
-        query_conditions.append({"till_number": transaction.till_number})
-    if transaction.paybill_number:
-        query_conditions.append({"paybill_number": transaction.paybill_number})
-    if transaction.api_integration_id:
-        query_conditions.append({"api_integration_id": transaction.api_integration_id})
-
-    if not query_conditions:
+    """Match transaction to a lottery based on till/paybill. C2B sends BusinessShortCode (stored as till_number)."""
+    shortcode = transaction.till_number or transaction.paybill_number
+    if not shortcode:
         return None
 
-    for condition in query_conditions:
+    # Match lottery by shortcode (Till or Paybill - both use same BusinessShortCode)
+    for condition in [{"till_number": shortcode}, {"paybill_number": shortcode}]:
         lottery = await Lottery.find_one(
             {**condition, "is_active": True}
         )

@@ -4,10 +4,15 @@ from beanie import Document, Indexed, PydanticObjectId
 from pydantic import Field
 
 
+# Demo Paybill for showcasing (Safaricom sandbox demo number)
+DEMO_PAYBILL = "174379"
+
+
 class Lottery(Document):
     name: Indexed(str, unique=True)
     description: Optional[str] = None
     lottery_type: str = "random_pick"  # "random_pick" | "sequential"
+    is_demo: bool = False  # True = demo paybill for showcase; False = uses configured M-Pesa
     till_number: Optional[str] = None
     paybill_number: Optional[str] = None
     api_integration_id: Optional[str] = None

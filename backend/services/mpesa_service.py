@@ -5,13 +5,14 @@ from typing import Optional
 
 import httpx
 
-from backend.config.config import get_settings
+from backend.services import config_service
 
 logger = logging.getLogger(__name__)
 
 
-def _get_settings():
-    return get_settings()
+async def _get_config():
+    """Effective M-Pesa config: DB overrides env."""
+    return await config_service.get_mpesa_config()
 
 
 def _generate_timestamp() -> str:
@@ -29,17 +30,18 @@ def _basic_auth_header(consumer_key: str, consumer_secret: str) -> str:
 
 
 async def get_access_token() -> Optional[str]:
-    settings = _get_settings()
-    if not settings.MPESA_CONSUMER_KEY:
+    cfg = await _get_config()
+    if not cfg.get("mpesa_consumer_key"):
         logger.warning("M-Pesa credentials not configured")
         return None
+    base = (cfg.get("mpesa_base_url") or "https://api.safaricom.co.ke").rstrip("/")
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-            f"{settings.MPESA_BASE_URL}/oauth/v1/generate",
+            f"{base}/oauth/v1/generate",
             params={"grant_type": "client_credentials"},
             headers={"Authorization": _basic_auth_header(
-                settings.MPESA_CONSUMER_KEY,
-                settings.MPESA_CONSUMER_SECRET,
+                cfg["mpesa_consumer_key"],
+                cfg["mpesa_consumer_secret"],
             )},
         )
     if resp.status_code == 200:
@@ -54,17 +56,19 @@ async def initiate_stk_push(
     account_reference: str = "LotteryPayment",
     description: str = "Lottery Payment",
 ) -> dict:
-    settings = _get_settings()
+    cfg = await _get_config()
     token = await get_access_token()
     if not token:
         return {"error": "M-Pesa not configured or authentication failed"}
 
+    shortcode = cfg.get("mpesa_business_short_code") or ""
+    passkey = cfg.get("mpesa_passkey") or ""
+    base = (cfg.get("mpesa_base_url") or "https://api.safaricom.co.ke").rstrip("/")
+    callback = cfg.get("mpesa_callback_url") or ""
+    account_type = (cfg.get("mpesa_account_type") or "till").lower()
+
     timestamp = _generate_timestamp()
-    password = _generate_password(
-        settings.MPESA_BUSINESS_SHORT_CODE,
-        settings.MPESA_PASSKEY,
-        timestamp,
-    )
+    password = _generate_password(shortcode, passkey, timestamp)
     kes_amount = max(1, amount // 100)  # convert cents to whole KES
 
     # Normalize phone: strip leading 0 or +, ensure 2547XXXXXXXX format
@@ -73,27 +77,24 @@ async def initiate_stk_push(
         phone = "254" + phone[1:]
 
     # Till (Buy Goods) uses CustomerBuyGoodsOnline; Paybill uses CustomerPayBillOnline
-    transaction_type = (
-        "CustomerBuyGoodsOnline" if settings.MPESA_ACCOUNT_TYPE.lower() == "till"
-        else "CustomerPayBillOnline"
-    )
+    transaction_type = "CustomerBuyGoodsOnline" if account_type == "till" else "CustomerPayBillOnline"
     payload = {
-        "BusinessShortCode": settings.MPESA_BUSINESS_SHORT_CODE,
+        "BusinessShortCode": shortcode,
         "Password": password,
         "Timestamp": timestamp,
         "TransactionType": transaction_type,
         "Amount": kes_amount,
         "PartyA": phone,
-        "PartyB": settings.MPESA_BUSINESS_SHORT_CODE,
+        "PartyB": shortcode,
         "PhoneNumber": phone,
-        "CallBackURL": settings.MPESA_CALLBACK_URL,
+        "CallBackURL": callback,
         "AccountReference": account_reference[:12],
         "TransactionDesc": description[:13],
     }
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{settings.MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest",
+            f"{base}/mpesa/stkpush/v1/processrequest",
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
             json=payload,
         )
@@ -101,20 +102,20 @@ async def initiate_stk_push(
 
 
 async def query_stk_status(checkout_request_id: str) -> dict:
-    settings = _get_settings()
+    cfg = await _get_config()
     token = await get_access_token()
     if not token:
         return {"error": "M-Pesa not configured or authentication failed"}
 
+    shortcode = cfg.get("mpesa_business_short_code") or ""
+    passkey = cfg.get("mpesa_passkey") or ""
+    base = (cfg.get("mpesa_base_url") or "https://api.safaricom.co.ke").rstrip("/")
+
     timestamp = _generate_timestamp()
-    password = _generate_password(
-        settings.MPESA_BUSINESS_SHORT_CODE,
-        settings.MPESA_PASSKEY,
-        timestamp,
-    )
+    password = _generate_password(shortcode, passkey, timestamp)
 
     payload = {
-        "BusinessShortCode": settings.MPESA_BUSINESS_SHORT_CODE,
+        "BusinessShortCode": shortcode,
         "Password": password,
         "Timestamp": timestamp,
         "CheckoutRequestID": checkout_request_id,
@@ -122,7 +123,7 @@ async def query_stk_status(checkout_request_id: str) -> dict:
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{settings.MPESA_BASE_URL}/mpesa/stkpushquery/v1/query",
+            f"{base}/mpesa/stkpushquery/v1/query",
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
             json=payload,
         )
@@ -134,23 +135,24 @@ async def register_c2b_urls(
     validation_url: Optional[str] = None,
     shortcode: Optional[str] = None,
 ) -> dict:
-    settings = _get_settings()
+    cfg = await _get_config()
     token = await get_access_token()
     if not token:
         return {"error": "M-Pesa not configured or authentication failed"}
 
+    base = (cfg.get("mpesa_base_url") or "https://api.safaricom.co.ke").rstrip("/")
     payload = {
-        "ShortCode": shortcode or settings.MPESA_BUSINESS_SHORT_CODE,
+        "ShortCode": shortcode or cfg.get("mpesa_business_short_code") or "",
         "ResponseType": "Completed",
-        "ConfirmationURL": confirmation_url or settings.MPESA_C2B_CONFIRMATION_URL,
-        "ValidationURL": validation_url or settings.MPESA_C2B_VALIDATION_URL,
+        "ConfirmationURL": confirmation_url or cfg.get("mpesa_c2b_confirmation_url") or "",
+        "ValidationURL": validation_url or cfg.get("mpesa_c2b_validation_url") or "",
     }
 
     # Production uses C2B v2; Sandbox uses v1
-    c2b_version = "v2" if "api.safaricom.co.ke" in settings.MPESA_BASE_URL else "v1"
+    c2b_version = "v2" if "api.safaricom.co.ke" in base else "v1"
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{settings.MPESA_BASE_URL}/mpesa/c2b/{c2b_version}/registerurl",
+            f"{base}/mpesa/c2b/{c2b_version}/registerurl",
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
             json=payload,
         )
