@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "@/api/client";
 import { Transaction } from "@/types";
-import { formatAmount, formatDate, maskMsisdnDisplay } from "@/lib/utils";
+import { formatAmount, formatDate, formatKeMsisdnReadable, maskMsisdnDisplay } from "@/lib/utils";
 
 type MpesaStatus = {
   short_code: string | null;
@@ -45,6 +45,8 @@ export default function AdminTransactions() {
     till_number: "",
   });
   const [error, setError] = useState("");
+  const [unmaskedPhones, setUnmaskedPhones] = useState<Record<string, string>>({});
+  const [revealLoadingId, setRevealLoadingId] = useState<string | null>(null);
 
   const load = () => {
     const params = new URLSearchParams();
@@ -67,6 +69,34 @@ export default function AdminTransactions() {
       .then((r) => setMpesa(r.data))
       .catch(() => setMpesa(null));
   }, []);
+
+  const togglePhoneReveal = async (t: Transaction) => {
+    if (unmaskedPhones[t.id]) {
+      setUnmaskedPhones((prev) => {
+        const next = { ...prev };
+        delete next[t.id];
+        return next;
+      });
+      return;
+    }
+    setRevealLoadingId(t.id);
+    try {
+      const r = await api.get<{
+        phone: string | null;
+        raw_stored: string | null;
+        was_decoded: boolean;
+      }>(`/api/admin/transactions/${t.id}/reveal-customer-phone`);
+      const shown = r.data.phone || r.data.raw_stored;
+      setUnmaskedPhones((prev) => ({
+        ...prev,
+        [t.id]: shown ? formatKeMsisdnReadable(shown) || shown : "—",
+      }));
+    } catch {
+      setUnmaskedPhones((prev) => ({ ...prev, [t.id]: "—" }));
+    } finally {
+      setRevealLoadingId(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +174,7 @@ export default function AdminTransactions() {
               <th className="px-4 py-3 text-left">Customer</th>
               <th
                 className="px-4 py-3 text-left"
-                title="Always masked in this list. Full number after a draw (winner details)."
+                title="Kenya-style masked (+2547•••••678). Use Show to reveal (admin); uses hash lookup when available."
               >
                 MSISDN
               </th>
@@ -167,8 +197,22 @@ export default function AdminTransactions() {
                 </td>
                 <td className="px-4 py-3">{formatAmount(t.amount)}</td>
                 <td className="px-4 py-3 text-gray-600">{t.customer_name || "—"}</td>
-                <td className="px-4 py-3 font-mono text-xs text-gray-600 tabular-nums">
-                  {maskMsisdnDisplay(t.customer_phone)}
+                <td className="px-4 py-3">
+                  <div className="flex items-start gap-2 flex-wrap">
+                    <span className="font-mono text-xs text-gray-600 tabular-nums break-all min-w-0">
+                      {unmaskedPhones[t.id] ?? maskMsisdnDisplay(t.customer_phone)}
+                    </span>
+                    {t.customer_phone?.trim() ? (
+                      <button
+                        type="button"
+                        onClick={() => togglePhoneReveal(t)}
+                        disabled={revealLoadingId === t.id}
+                        className="text-[10px] shrink-0 border border-gray-300 rounded px-2 py-0.5 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        {revealLoadingId === t.id ? "…" : unmaskedPhones[t.id] ? "Hide" : "Show"}
+                      </button>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">
                   {t.bill_ref_number?.trim() || "—"}

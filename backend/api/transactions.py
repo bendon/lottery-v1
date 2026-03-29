@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from backend.auth.dependencies import require_admin
 from backend.models.transaction import Transaction
 from backend.services.transaction_router import route_transaction
+from backend.services.msisdn_decode_service import decode_msisdn
 
 router = APIRouter(prefix="/api/admin/transactions", tags=["transactions"])
 
@@ -64,6 +65,27 @@ async def list_transactions(
 
     txns = await Transaction.find(query).sort("-payment_date").to_list()
     return [{"id": str(t.id), **t.dict()} for t in txns]
+
+
+@router.get("/{transaction_id}/reveal-customer-phone")
+async def reveal_customer_phone(transaction_id: PydanticObjectId, _=Depends(require_admin)):
+    """Admin only: return decoded/plain MSISDN (Daraja hash resolved via lookup when possible)."""
+    txn = await Transaction.get(transaction_id)
+    if not txn:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    raw = (txn.customer_phone or "").strip()
+    if not raw:
+        return {"phone": None, "raw_stored": None, "was_decoded": False}
+
+    decoded = await decode_msisdn(raw)
+    phone = (decoded or raw).strip()
+    was_decoded = bool(decoded and decoded.strip() and decoded.strip() != raw)
+
+    return {
+        "phone": phone,
+        "raw_stored": raw,
+        "was_decoded": was_decoded,
+    }
 
 
 @router.get("/{transaction_id}")
