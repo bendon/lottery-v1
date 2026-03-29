@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "@/api/client";
 import { Transaction } from "@/types";
-import { formatAmount, formatDate } from "@/lib/utils";
+import { formatAmount, formatDate, maskMsisdnDisplay } from "@/lib/utils";
 
 type MpesaStatus = {
   short_code: string | null;
@@ -142,7 +142,12 @@ export default function AdminTransactions() {
               </th>
               <th className="px-4 py-3 text-left">Amount</th>
               <th className="px-4 py-3 text-left">Customer</th>
-              <th className="px-4 py-3 text-left">MSISDN</th>
+              <th
+                className="px-4 py-3 text-left"
+                title="Always masked in this list. Full number after a draw (winner details)."
+              >
+                MSISDN
+              </th>
               <th className="px-4 py-3 text-left">Bill ref</th>
               <th className="px-4 py-3 text-left">Date</th>
             </tr>
@@ -162,8 +167,8 @@ export default function AdminTransactions() {
                 </td>
                 <td className="px-4 py-3">{formatAmount(t.amount)}</td>
                 <td className="px-4 py-3 text-gray-600">{t.customer_name || "—"}</td>
-                <td className="px-4 py-3 font-mono text-xs text-gray-600 break-all max-w-[140px]">
-                  {t.customer_phone?.trim() || "—"}
+                <td className="px-4 py-3 font-mono text-xs text-gray-600 tabular-nums">
+                  {maskMsisdnDisplay(t.customer_phone)}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">
                   {t.bill_ref_number?.trim() || "—"}
