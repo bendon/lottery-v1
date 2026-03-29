@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     # Production: https://api.safaricom.co.ke | Sandbox: https://sandbox.safaricom.co.ke
     MPESA_CONSUMER_KEY: str = ""
     MPESA_CONSUMER_SECRET: str = ""
-    MPESA_BUSINESS_SHORT_CODE: str = ""    # Till number or Paybill short code
+    MPESA_BUSINESS_SHORT_CODE: str = ""    # Daraja Business Short Code (API / C2B)
+    # Optional: customer-facing Till number on Buy Goods (on-air copy); routing uses MPESA_BUSINESS_SHORT_CODE
+    MPESA_TILL_DISPLAY_NUMBER: str = ""
     MPESA_PASSKEY: str = ""
     MPESA_BASE_URL: str = "https://api.safaricom.co.ke"
     # till = CustomerBuyGoodsOnline (Lipa Na M-Pesa), paybill = CustomerPayBillOnline

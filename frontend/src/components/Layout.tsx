@@ -74,8 +74,8 @@ export function Layout({ children }: Props) {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-auto">
-        <main className="flex-1 p-6">{children}</main>
+      <div className="flex-1 flex flex-col overflow-auto min-w-0">
+        <main className="flex-1 p-6 min-w-0">{children}</main>
         <footer className="border-t border-gray-100 px-6 py-3 flex items-center justify-between text-[11px] text-gray-400 shrink-0">
           <span>© 2026 <a href="https://edgetech.co.ke" target="_blank" rel="noopener noreferrer" className="hover:text-gray-600 underline underline-offset-2">EdgeTech Consults Ltd.</a> All rights reserved.</span>
           <span>System Version 2.04.1</span>

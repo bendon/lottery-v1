@@ -29,6 +29,7 @@ class MpesaConfigUpdate(BaseModel):
     mpesa_consumer_key: Optional[str] = None
     mpesa_consumer_secret: Optional[str] = None
     mpesa_business_short_code: Optional[str] = None
+    mpesa_till_display_number: Optional[str] = None
     mpesa_passkey: Optional[str] = None
     mpesa_base_url: Optional[str] = None
     mpesa_account_type: Optional[str] = None
@@ -48,6 +49,7 @@ async def mpesa_status(_=Depends(require_admin)):
     return {
         "active": active,
         "short_code": config.get("mpesa_business_short_code") or None,
+        "till_display_number": (config.get("mpesa_till_display_number") or "").strip() or None,
         "account_type": config.get("mpesa_account_type") or "till",
     }
 
@@ -61,6 +63,7 @@ async def get_mpesa_config(_=Depends(require_admin)):
             "mpesa_consumer_key": _mask_secret(config.get("mpesa_consumer_key"), 6),
             "mpesa_consumer_secret": _mask_secret(config.get("mpesa_consumer_secret"), 6),
             "mpesa_business_short_code": config.get("mpesa_business_short_code") or "",
+            "mpesa_till_display_number": config.get("mpesa_till_display_number") or "",
             "mpesa_passkey": _mask_secret(config.get("mpesa_passkey"), 8),
             "mpesa_base_url": config.get("mpesa_base_url") or "https://api.safaricom.co.ke",
             "mpesa_account_type": config.get("mpesa_account_type") or "till",

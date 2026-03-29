@@ -8,6 +8,7 @@ from backend.models.lottery import Lottery
 from backend.models.promotion import Promotion
 from backend.models.transaction import Transaction
 from backend.models.user import User
+from backend.services.lottery_payment_mode import lottery_uses_paybill_accounts
 
 router = APIRouter(tags=["dashboard"])
 
@@ -50,13 +51,19 @@ async def presenter_stats(current_user: User = Depends(get_current_user)):
     if my_promotion_ids:
         draws_count = await Draw.find({"promotion_id": {"$in": my_promotion_ids}}).count()
 
+    lottery_ids = list({p.lottery_id for p in active_promotions})
+    lotteries = {l.id: l for l in await Lottery.find({"_id": {"$in": lottery_ids}}).to_list()}
+
     for p in active_promotions:
+        lottery = lotteries.get(p.lottery_id)
         q = {
             "product_id": p.lottery_id,
             "payment_date": {"$gte": p.start_date, "$lte": p.end_date},
         }
-        if p.account_number:
+        if lottery and lottery_uses_paybill_accounts(lottery) and p.account_number:
             q["$or"] = [{"promotion_id": p.id}, {"bill_ref_number": p.account_number}]
+        else:
+            q["promotion_id"] = p.id
         transactions_count += await Transaction.find(q).count()
 
     recent_draws = []

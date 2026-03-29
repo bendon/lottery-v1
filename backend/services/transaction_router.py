@@ -3,12 +3,14 @@ from typing import Optional
 from backend.models.lottery import Lottery
 from backend.models.promotion import Promotion
 from backend.models.transaction import Transaction
+from backend.services.lottery_payment_mode import lottery_uses_paybill_accounts
 
 
 async def route_transaction(transaction: Transaction) -> Optional[Lottery]:
     """
-    Match transaction to lottery (and promotion when Paybill + account).
-    Paybill: BusinessShortCode + BillRefNumber (account) → lottery + promotion.
+    Match transaction to lottery and promotion when applicable.
+    Paybill: BusinessShortCode + BillRefNumber → promotion via account_number.
+    Till / STK: single active promotion on lottery → promotion_id.
     """
     shortcode = transaction.till_number or transaction.paybill_number
     if not shortcode:
@@ -24,8 +26,7 @@ async def route_transaction(transaction: Transaction) -> Optional[Lottery]:
     transaction.product_type = "lottery"
     transaction.product_id = lottery.id
 
-    # Paybill + account_number: match to promotion for concurrent promotions
-    if transaction.payment_type == "paybill" and transaction.bill_ref_number:
+    if lottery_uses_paybill_accounts(lottery) and transaction.payment_type == "paybill" and transaction.bill_ref_number:
         promo = await Promotion.find_one(
             {
                 "lottery_id": lottery.id,
@@ -33,6 +34,10 @@ async def route_transaction(transaction: Transaction) -> Optional[Lottery]:
                 "status": "active",
             }
         )
+        if promo:
+            transaction.promotion_id = promo.id
+    elif not lottery_uses_paybill_accounts(lottery) and transaction.payment_type in ("till", "stk_push"):
+        promo = await Promotion.find_one({"lottery_id": lottery.id, "status": "active"})
         if promo:
             transaction.promotion_id = promo.id
 

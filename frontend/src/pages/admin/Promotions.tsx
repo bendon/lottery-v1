@@ -67,6 +67,10 @@ const FILTER_TABS = [
   ...OPERATOR_TYPES.map((k) => ({ key: k, label: TYPE_META[k].label + "s" })),
 ];
 
+function lotteryUsesPaybill(l: Lottery | undefined): boolean {
+  return !!(l?.payment_types ?? []).includes("paybill");
+}
+
 // ─── Create Operator Modal ────────────────────────────────────────────────────
 
 type OperatorForm = {
@@ -310,6 +314,8 @@ export default function AdminPromotions() {
 
   const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
   const lotteryMap = Object.fromEntries(lotteries.map((l) => [l.id, l]));
+  const selectedLotteryForForm = form.lottery_id ? lotteryMap[form.lottery_id] : undefined;
+  const showPaybillAccountField = lotteryUsesPaybill(selectedLotteryForForm);
 
   const loadUsers = () =>
     api.get<User[]>("/api/admin/users").then((r) => setUsers(r.data));
@@ -612,17 +618,28 @@ export default function AdminPromotions() {
                 />
               </div>
 
-              {/* Paybill Account (enables concurrent promotions) */}
-              <div>
-                <label className="block text-xs font-medium mb-1">Paybill Account Number</label>
-                <input
-                  placeholder="e.g. MORNING, EVENING (customers enter this when paying)"
-                  value={form.account_number}
-                  onChange={(e) => setForm((f) => ({ ...f, account_number: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-black"
-                />
-                <p className="text-[10px] text-gray-400 mt-0.5">BillRefNumber — unique per promotion for same lottery</p>
-              </div>
+              {showPaybillAccountField ? (
+                <div>
+                  <label className="block text-xs font-medium mb-1">Paybill Account Number</label>
+                  <input
+                    placeholder="e.g. MORNING, EVENING (customers enter this when paying)"
+                    value={form.account_number}
+                    onChange={(e) => setForm((f) => ({ ...f, account_number: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-black"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    BillRefNumber — unique per promotion for the same Paybill lottery
+                  </p>
+                </div>
+              ) : selectedLotteryForForm ? (
+                <div className="rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2.5">
+                  <p className="text-xs text-amber-900 font-medium">Till lottery</p>
+                  <p className="text-[10px] text-amber-800/90 mt-1 leading-snug">
+                    Only one active promotion at a time per Till lottery. Paybill account numbers do not apply; all
+                    Till and STK payments on this short code are attributed to the current active promotion.
+                  </p>
+                </div>
+              ) : null}
 
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3">

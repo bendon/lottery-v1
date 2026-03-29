@@ -160,7 +160,16 @@ export default function AdminLotteries() {
                   {l.is_demo && <span className="ml-1 text-xs text-amber-600">(Demo)</span>}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                  {l.till_number || l.paybill_number || <span className="text-gray-300 italic">—</span>}
+                  {l.till_display_number && l.till_number ? (
+                    <span className="flex flex-col gap-0.5">
+                      <span title="Customer Till">Till {l.till_display_number}</span>
+                      <span className="text-[10px] text-gray-400" title="Daraja short code">
+                        API {l.till_number}
+                      </span>
+                    </span>
+                  ) : (
+                    l.till_number || l.paybill_number || <span className="text-gray-300 italic">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-gray-600">
                   {l.payout_amount ? formatAmount(l.payout_amount) : <span className="text-gray-300 italic">not set</span>}
@@ -316,6 +325,13 @@ export default function AdminLotteries() {
                     <p className="font-mono text-sm font-semibold">
                       {configLottery.is_demo ? (
                         <>Demo Paybill: {DEMO_PAYBILL}</>
+                      ) : configLottery.till_display_number && configLottery.till_number ? (
+                        <span className="block text-left">
+                          <span className="block">Till (on-air): {configLottery.till_display_number}</span>
+                          <span className="block text-xs text-gray-500 font-normal mt-1 normal-case">
+                            API short code: {configLottery.till_number}
+                          </span>
+                        </span>
                       ) : (
                         <>{configLottery.till_number || configLottery.paybill_number || "—"} (from Settings)</>
                       )}

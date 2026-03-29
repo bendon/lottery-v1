@@ -35,6 +35,11 @@ export default function AdminTransactions() {
     load();
   }, [search, paymentType, dateFrom, dateTo]);
 
+  /** Daraja BusinessShortCode — C2B sets till_number and paybill_number to the same value */
+  function businessShortCode(t: Transaction): string {
+    return (t.till_number || t.paybill_number || "").trim() || "—";
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -95,14 +100,19 @@ export default function AdminTransactions() {
         />
       </div>
 
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="border border-gray-200 rounded-lg overflow-x-auto">
+        <table className="w-full text-sm min-w-[720px]">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
               <th className="px-4 py-3 text-left">Ref</th>
               <th className="px-4 py-3 text-left">Type</th>
+              <th className="px-4 py-3 text-left whitespace-nowrap" title="Daraja BusinessShortCode">
+                Bus. short code
+              </th>
               <th className="px-4 py-3 text-left">Amount</th>
               <th className="px-4 py-3 text-left">Customer</th>
+              <th className="px-4 py-3 text-left">MSISDN</th>
+              <th className="px-4 py-3 text-left">Bill ref</th>
               <th className="px-4 py-3 text-left">Date</th>
             </tr>
           </thead>
@@ -111,14 +121,21 @@ export default function AdminTransactions() {
               <tr key={t.id}>
                 <td className="px-4 py-3 font-mono text-xs">{t.transaction_number}</td>
                 <td className="px-4 py-3 capitalize">{t.payment_type}</td>
+                <td className="px-4 py-3 font-mono text-xs text-gray-700">{businessShortCode(t)}</td>
                 <td className="px-4 py-3">{formatAmount(t.amount)}</td>
-                <td className="px-4 py-3 text-gray-500">{t.customer_name || "—"}</td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(t.payment_date)}</td>
+                <td className="px-4 py-3 text-gray-600">{t.customer_name || "—"}</td>
+                <td className="px-4 py-3 font-mono text-xs text-gray-600 break-all max-w-[140px]">
+                  {t.customer_phone?.trim() || "—"}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                  {t.bill_ref_number?.trim() || "—"}
+                </td>
+                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDate(t.payment_date)}</td>
               </tr>
             ))}
             {transactions.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">No transactions found</td>
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">No transactions found</td>
               </tr>
             )}
           </tbody>

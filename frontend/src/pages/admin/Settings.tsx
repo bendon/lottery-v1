@@ -8,6 +8,7 @@ interface MpesaConfig {
   mpesa_consumer_key: string;
   mpesa_consumer_secret: string;
   mpesa_business_short_code: string;
+  mpesa_till_display_number: string;
   mpesa_passkey: string;
   mpesa_base_url: string;
   mpesa_account_type: string;
@@ -41,6 +42,7 @@ export default function AdminSettings() {
       // Pre-fill non-secrets; leave secrets empty (masked values not editable)
       setMpesaForm({
         mpesa_business_short_code: c.mpesa_business_short_code,
+        mpesa_till_display_number: c.mpesa_till_display_number ?? "",
         mpesa_base_url: c.mpesa_base_url,
         mpesa_account_type: c.mpesa_account_type,
         mpesa_callback_url: c.mpesa_callback_url,
@@ -119,7 +121,7 @@ export default function AdminSettings() {
   const missing = definitions.filter((d) => !existingKeys.has(d.key));
 
   return (
-    <div>
+    <div className="min-w-0 max-w-full overflow-x-hidden">
       <h2 className="text-xl font-bold mb-4">Settings</h2>
 
       <div className="flex gap-2 mb-6 border-b border-gray-200">
@@ -160,33 +162,33 @@ export default function AdminSettings() {
         </div>
       )}
 
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="border border-gray-200 rounded-lg overflow-x-auto">
+        <table className="w-full text-sm min-w-0 table-fixed">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
-              <th className="px-4 py-3 text-left">Key</th>
-              <th className="px-4 py-3 text-left">Value</th>
-              <th className="px-4 py-3 text-left">Description</th>
-              <th className="px-4 py-3 text-left">Actions</th>
+              <th className="px-4 py-3 text-left w-[22%]">Key</th>
+              <th className="px-4 py-3 text-left w-[38%]">Value</th>
+              <th className="px-4 py-3 text-left w-[30%]">Description</th>
+              <th className="px-4 py-3 text-left w-[10%]">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {settings.map((s) => (
               <tr key={s.id}>
-                <td className="px-4 py-3 font-mono text-xs">{s.key}</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 font-mono text-xs min-w-0 break-all">{s.key}</td>
+                <td className="px-4 py-3 min-w-0 max-w-[28rem]">
                   {editing === s.key ? (
                     <input
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
-                      className="border border-gray-300 rounded px-2 py-1 text-sm w-32"
+                      className="border border-gray-300 rounded px-2 py-1 text-sm w-full max-w-xs"
                       autoFocus
                     />
                   ) : (
-                    <span className="font-mono">{s.value}</span>
+                    <span className="font-mono text-xs break-all block">{s.value}</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{s.description}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs min-w-0 break-words">{s.description}</td>
                 <td className="px-4 py-3">
                   {editing === s.key ? (
                     <div className="flex gap-1">
@@ -227,134 +229,156 @@ export default function AdminSettings() {
             </p>
           </div>
 
-          <div className="border border-gray-200 rounded-lg p-6 space-y-4 max-w-2xl">
+          <div className="border border-gray-200 rounded-lg p-6 space-y-4 max-w-2xl w-full min-w-0">
             <h3 className="font-semibold">M-Pesa Daraja API</h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
+              <div className="min-w-0">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Consumer Key</label>
                 {mpesaConfig?.mpesa_consumer_key && (
-                  <p className="text-xs text-gray-400 mb-0.5 font-mono">Current: {mpesaConfig.mpesa_consumer_key}</p>
+                  <p className="text-xs text-gray-400 mb-0.5 font-mono break-all hyphens-none leading-relaxed">
+                    Current: {mpesaConfig.mpesa_consumer_key}
+                  </p>
                 )}
                 <input
                   value={mpesaForm.mpesa_consumer_key ?? ""}
                   onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_consumer_key: e.target.value }))}
                   placeholder="Enter new value to change"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Consumer Secret</label>
                 {mpesaConfig?.mpesa_consumer_secret && (
-                  <p className="text-xs text-gray-400 mb-0.5 font-mono">Current: {mpesaConfig.mpesa_consumer_secret}</p>
+                  <p className="text-xs text-gray-400 mb-0.5 font-mono break-all hyphens-none leading-relaxed">
+                    Current: {mpesaConfig.mpesa_consumer_secret}
+                  </p>
                 )}
                 <input
                   type="password"
                   value={mpesaForm.mpesa_consumer_secret ?? ""}
                   onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_consumer_secret: e.target.value }))}
                   placeholder="Enter new value to change"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Business Short Code (Till/Paybill)</label>
+              <div className="min-w-0">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Business Short Code (Daraja / API)
+                </label>
                 <input
                   value={mpesaForm.mpesa_business_short_code ?? ""}
                   onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_business_short_code: e.target.value }))}
-                  placeholder="e.g. 4561783"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  placeholder="e.g. 4518831 — used for STK, C2B routing"
+                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Till number (on-air / customer-facing, optional)
+                </label>
+                <input
+                  value={mpesaForm.mpesa_till_display_number ?? ""}
+                  onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_till_display_number: e.target.value }))}
+                  placeholder="e.g. 3329485 — display only when Account Type is Till"
+                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                />
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  Routing still uses Business Short Code above; this is for presenters and marketing copy.
+                </p>
+              </div>
+              <div className="min-w-0">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Passkey</label>
                 {mpesaConfig?.mpesa_passkey && (
-                  <p className="text-xs text-gray-400 mb-0.5 font-mono">Current: {mpesaConfig.mpesa_passkey}</p>
+                  <p className="text-xs text-gray-400 mb-0.5 font-mono break-all hyphens-none leading-relaxed">
+                    Current: {mpesaConfig.mpesa_passkey}
+                  </p>
                 )}
                 <input
                   type="password"
                   value={mpesaForm.mpesa_passkey ?? ""}
                   onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_passkey: e.target.value }))}
                   placeholder="Enter new value to change"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                 />
               </div>
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label className="block text-xs font-medium text-gray-500 mb-1">Base URL</label>
               <select
                 value={mpesaForm.mpesa_base_url ?? "https://api.safaricom.co.ke"}
                 onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_base_url: e.target.value }))}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm"
               >
                 <option value="https://api.safaricom.co.ke">Production (api.safaricom.co.ke)</option>
                 <option value="https://sandbox.safaricom.co.ke">Sandbox (sandbox.safaricom.co.ke)</option>
               </select>
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label className="block text-xs font-medium text-gray-500 mb-1">Account Type</label>
               <select
                 value={mpesaForm.mpesa_account_type ?? "till"}
                 onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_account_type: e.target.value }))}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm"
               >
                 <option value="till">Till (Buy Goods / Lipa Na M-Pesa)</option>
                 <option value="paybill">PayBill (uses account numbers for concurrent promotions)</option>
               </select>
             </div>
 
-            <div className="pt-2 border-t border-gray-100">
+            <div className="pt-2 border-t border-gray-100 min-w-0">
               <p className="text-xs font-medium text-gray-500 mb-2">Callback URLs (must be public HTTPS)</p>
               <div className="space-y-3">
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs text-gray-400 mb-0.5">STK Push Callback</label>
                   <input
                     value={mpesaForm.mpesa_callback_url ?? ""}
                     onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_callback_url: e.target.value }))}
                     placeholder="https://yourdomain.com/api/webhooks/daraja/stk-callback"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                    className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs text-gray-400 mb-0.5">C2B Confirmation URL</label>
                   <input
                     value={mpesaForm.mpesa_c2b_confirmation_url ?? ""}
                     onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_c2b_confirmation_url: e.target.value }))}
                     placeholder="https://yourdomain.com/api/webhooks/daraja/c2b"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                    className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs text-gray-400 mb-0.5">C2B Validation URL</label>
                   <input
                     value={mpesaForm.mpesa_c2b_validation_url ?? ""}
                     onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_c2b_validation_url: e.target.value }))}
                     placeholder="https://yourdomain.com/api/webhooks/daraja/c2b/validate"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                    className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-gray-100">
+            <div className="pt-2 border-t border-gray-100 min-w-0">
               <p className="text-xs font-medium text-gray-500 mb-2">MSISDN Decode API</p>
-              <p className="text-xs text-gray-400 mb-3">
-                Built-in: <code className="bg-gray-100 px-1 rounded">/api/msisdn/decode</code>. Set full URL to use it (e.g. https://l-gain-v1.payl.to/api/msisdn/decode). mpesa-hash-decoder format.
+              <p className="text-xs text-gray-400 mb-3 break-words">
+                Built-in: <code className="bg-gray-100 px-1 rounded break-all">/api/msisdn/decode</code>. Set full URL to use it. mpesa-hash-decoder format.
               </p>
-              <div>
+              <div className="min-w-0">
                 <label className="block text-xs text-gray-400 mb-0.5">DECODE_MSISDN_URL</label>
                 <input
                   value={mpesaForm.mpesa_decode_msisdn_url ?? ""}
                   onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_decode_msisdn_url: e.target.value }))}
                   placeholder="https://l-gain-v1.payl.to/api/msisdn/decode"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                 />
               </div>
             </div>
 
             {mpesaError && (
-              <div className={`rounded-lg px-4 py-3 text-sm ${/success/i.test(mpesaError) ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+              <div className={`rounded-lg px-4 py-3 text-sm break-words ${/success/i.test(mpesaError) ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
                 {mpesaError}
               </div>
             )}

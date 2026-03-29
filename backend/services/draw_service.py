@@ -10,6 +10,7 @@ from backend.models.lottery import Lottery
 from backend.models.promotion import Promotion
 from backend.models.transaction import Transaction
 from backend.services import config_service
+from backend.services.lottery_payment_mode import lottery_uses_paybill_accounts
 
 
 async def get_eligible_transactions(promotion: Promotion) -> List[Transaction]:
@@ -29,11 +30,13 @@ async def get_eligible_transactions(promotion: Promotion) -> List[Transaction]:
         "payment_type": {"$in": lottery.payment_types},
         "payment_date": {"$gte": promotion.start_date, "$lte": promotion.end_date},
     }
-    if promotion.account_number:
+    if promotion.account_number and lottery_uses_paybill_accounts(lottery):
         query["$or"] = [
             {"promotion_id": promotion.id},
             {"bill_ref_number": promotion.account_number},
         ]
+    else:
+        query["promotion_id"] = promotion.id
 
     # Apply lottery-specific settings
     lottery_settings = lottery.settings or {}

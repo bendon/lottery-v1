@@ -83,7 +83,19 @@ async def create_lottery(body: LotteryCreate, current_user=Depends(require_admin
 @router.get("")
 async def list_lotteries(_=Depends(require_admin)):
     lotteries = await Lottery.find_all().to_list()
-    return [{"id": str(l.id), **l.dict()} for l in lotteries]
+    mpesa = await config_service.get_mpesa_config()
+    till_display = (mpesa.get("mpesa_till_display_number") or "").strip()
+    out = []
+    for l in lotteries:
+        row = {"id": str(l.id), **l.dict()}
+        if (
+            not l.is_demo
+            and till_display
+            and "till" in (l.payment_types or [])
+        ):
+            row["till_display_number"] = till_display
+        out.append(row)
+    return out
 
 
 @router.get("/{lottery_id}")
@@ -91,7 +103,16 @@ async def get_lottery(lottery_id: PydanticObjectId, _=Depends(require_admin)):
     lottery = await Lottery.get(lottery_id)
     if not lottery:
         raise HTTPException(status_code=404, detail="Lottery not found")
-    return {"id": str(lottery.id), **lottery.dict()}
+    row = {"id": str(lottery.id), **lottery.dict()}
+    till_display = (await config_service.get_mpesa_config()).get("mpesa_till_display_number") or ""
+    till_display = till_display.strip()
+    if (
+        not lottery.is_demo
+        and till_display
+        and "till" in (lottery.payment_types or [])
+    ):
+        row["till_display_number"] = till_display
+    return row
 
 
 @router.put("/{lottery_id}")

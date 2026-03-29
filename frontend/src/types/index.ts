@@ -17,6 +17,8 @@ export interface Lottery {
   lottery_type: string;
   is_demo?: boolean;
   till_number?: string;
+  /** Customer-facing Till no. from M-Pesa settings (on-air); API short code is till_number */
+  till_display_number?: string;
   paybill_number?: string;
   payment_types: string[];
   payout_amount?: number;
@@ -44,11 +46,16 @@ export interface Transaction {
   payment_type: string;
   amount: number;
   customer_name?: string;
+  /** MSISDN from M-Pesa (may be hashed on some C2B payloads) */
   customer_phone?: string;
   payment_date: string;
   product_type?: string;
   product_id?: string;
+  promotion_id?: string;
+  /** BusinessShortCode from Daraja (stored on both for C2B) */
   till_number?: string;
+  paybill_number?: string;
+  bill_ref_number?: string;
 }
 
 export interface Draw {
