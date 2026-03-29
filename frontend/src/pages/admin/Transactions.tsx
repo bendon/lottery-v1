@@ -90,11 +90,21 @@ export default function AdminTransactions() {
         still_hashed?: boolean;
         hint?: string | null;
       }>(`/api/admin/transactions/${t.id}/reveal-customer-phone`);
-      const rawVal = (r.data.phone || r.data.raw_stored || "").trim();
-      let display = rawVal || "—";
-      if (r.data.was_decoded && display !== "—" && !/^[a-fA-F0-9]{64}$/i.test(display)) {
-        display = formatKeMsisdnReadable(display) || display;
+      const rawStored = (r.data.raw_stored ?? "").trim();
+      const candidate = ((r.data.phone ?? "").trim() || rawStored) || "";
+      const isHash64 = (s: string) => /^[a-fA-F0-9]{64}$/i.test(s);
+
+      let display: string;
+      if (!candidate) {
+        display = "—";
+      } else if (r.data.was_decoded && !isHash64(candidate)) {
+        display = formatKeMsisdnReadable(candidate) || candidate;
+      } else if (r.data.still_hashed || isHash64(candidate)) {
+        display = maskMsisdnDisplay(rawStored || candidate);
+      } else {
+        display = candidate;
       }
+
       setUnmaskedPhones((prev) => ({
         ...prev,
         [t.id]: {
