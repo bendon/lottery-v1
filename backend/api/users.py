@@ -67,12 +67,35 @@ async def get_user(user_id: PydanticObjectId, _=Depends(require_admin)):
 
 
 @router.put("/{user_id}")
-async def update_user(user_id: PydanticObjectId, body: UserUpdate, _=Depends(require_admin)):
+async def update_user(
+    user_id: PydanticObjectId,
+    body: UserUpdate,
+    current_user: User = Depends(require_admin),
+):
     user = await User.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     update_data = body.dict(exclude_none=True)
+    if update_data.get("is_active") is False:
+        if user.id == current_user.id:
+            raise HTTPException(
+                status_code=400,
+                detail="You cannot deactivate your own account while signed in. Use another admin, or reactivate via the database.",
+            )
+        if user.role == "admin":
+            others = await User.find(
+                {
+                    "role": "admin",
+                    "is_active": True,
+                    "_id": {"$ne": user.id},
+                }
+            ).count()
+            if others == 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot deactivate the last active administrator.",
+                )
     if "password" in update_data:
         update_data["hashed_password"] = hash_password(update_data.pop("password"))
     update_data["updated_at"] = datetime.utcnow()
@@ -82,9 +105,17 @@ async def update_user(user_id: PydanticObjectId, body: UserUpdate, _=Depends(req
 
 
 @router.delete("/{user_id}")
-async def delete_user(user_id: PydanticObjectId, _=Depends(require_admin)):
+async def delete_user(user_id: PydanticObjectId, current_user: User = Depends(require_admin)):
     user = await User.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own account.")
+    if user.role == "admin":
+        others = await User.find(
+            {"role": "admin", "is_active": True, "_id": {"$ne": user.id}}
+        ).count()
+        if others == 0:
+            raise HTTPException(status_code=400, detail="Cannot delete the last active administrator.")
     await user.delete()
     return {"detail": "User deleted"}
