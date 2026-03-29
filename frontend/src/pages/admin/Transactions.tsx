@@ -45,7 +45,9 @@ export default function AdminTransactions() {
     till_number: "",
   });
   const [error, setError] = useState("");
-  const [unmaskedPhones, setUnmaskedPhones] = useState<Record<string, string>>({});
+  const [unmaskedPhones, setUnmaskedPhones] = useState<
+    Record<string, { display: string; hint?: string }>
+  >({});
   const [revealLoadingId, setRevealLoadingId] = useState<string | null>(null);
 
   const load = () => {
@@ -85,14 +87,26 @@ export default function AdminTransactions() {
         phone: string | null;
         raw_stored: string | null;
         was_decoded: boolean;
+        still_hashed?: boolean;
+        hint?: string | null;
       }>(`/api/admin/transactions/${t.id}/reveal-customer-phone`);
-      const shown = r.data.phone || r.data.raw_stored;
+      const rawVal = (r.data.phone || r.data.raw_stored || "").trim();
+      let display = rawVal || "—";
+      if (r.data.was_decoded && display !== "—" && !/^[a-fA-F0-9]{64}$/i.test(display)) {
+        display = formatKeMsisdnReadable(display) || display;
+      }
       setUnmaskedPhones((prev) => ({
         ...prev,
-        [t.id]: shown ? formatKeMsisdnReadable(shown) || shown : "—",
+        [t.id]: {
+          display,
+          hint: r.data.hint || undefined,
+        },
       }));
     } catch {
-      setUnmaskedPhones((prev) => ({ ...prev, [t.id]: "—" }));
+      setUnmaskedPhones((prev) => ({
+        ...prev,
+        [t.id]: { display: "—" },
+      }));
     } finally {
       setRevealLoadingId(null);
     }
@@ -199,15 +213,22 @@ export default function AdminTransactions() {
                 <td className="px-4 py-3 text-gray-600">{t.customer_name || "—"}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-start gap-2 flex-wrap">
-                    <span className="font-mono text-xs text-gray-600 tabular-nums break-all min-w-0">
-                      {unmaskedPhones[t.id] ?? maskMsisdnDisplay(t.customer_phone)}
-                    </span>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <span className="font-mono text-xs text-gray-600 tabular-nums break-all block">
+                        {unmaskedPhones[t.id]?.display ?? maskMsisdnDisplay(t.customer_phone)}
+                      </span>
+                      {unmaskedPhones[t.id]?.hint ? (
+                        <p className="text-[10px] text-amber-900/90 leading-snug max-w-xs">
+                          {unmaskedPhones[t.id].hint}
+                        </p>
+                      ) : null}
+                    </div>
                     {t.customer_phone?.trim() ? (
                       <button
                         type="button"
                         onClick={() => togglePhoneReveal(t)}
                         disabled={revealLoadingId === t.id}
-                        className="text-[10px] shrink-0 border border-gray-300 rounded px-2 py-0.5 hover:bg-gray-50 disabled:opacity-50"
+                        className="text-[10px] shrink-0 border border-gray-300 rounded px-2 py-0.5 hover:bg-gray-50 disabled:opacity-50 self-start"
                       >
                         {revealLoadingId === t.id ? "…" : unmaskedPhones[t.id] ? "Hide" : "Show"}
                       </button>

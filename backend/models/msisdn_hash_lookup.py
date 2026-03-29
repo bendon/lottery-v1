@@ -37,6 +37,35 @@ def hash_msisdn(phone: str) -> str:
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest().lower()
 
 
+def safaricom_msisdn_preimage_variants(normalized_254: str) -> list[str]:
+    """
+    Candidate strings that Safaricom may SHA-256 for C2B MSISDN (differs by channel).
+    When we learn a plain phone (e.g. STK), we index all variants so C2B hashes resolve.
+    """
+    n = (normalized_254 or "").strip()
+    if not n:
+        return []
+    base: list[str] = [n]
+    if n.startswith("254") and len(n) >= 12:
+        tail9 = n[3:12]
+        if len(tail9) == 9:
+            base.append(tail9)
+            base.append("0" + tail9)
+    with_plus = ["+" + b for b in base if not b.startswith("+")]
+    merged = base + with_plus
+    seen: set[str] = set()
+    out: list[str] = []
+    for x in merged:
+        if x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+
+def sha256_lower_hex(s: str) -> str:
+    return hashlib.sha256(s.encode("utf-8")).hexdigest().lower()
+
+
 class MsisdnHashLookup(Document):
     """Hash -> phone mapping for decoding C2B hashed MSISDN."""
     sha256_hash: Indexed(str, unique=True)

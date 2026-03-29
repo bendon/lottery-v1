@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from backend.auth.dependencies import require_admin
 from backend.models.transaction import Transaction
 from backend.services.transaction_router import route_transaction
-from backend.services.msisdn_decode_service import decode_msisdn
+from backend.services.msisdn_decode_service import decode_msisdn, looks_like_hash
 
 router = APIRouter(prefix="/api/admin/transactions", tags=["transactions"])
 
@@ -80,11 +80,23 @@ async def reveal_customer_phone(transaction_id: PydanticObjectId, _=Depends(requ
     decoded = await decode_msisdn(raw)
     phone = (decoded or raw).strip()
     was_decoded = bool(decoded and decoded.strip() and decoded.strip() != raw)
+    still_hashed = looks_like_hash(phone)
+
+    hint = None
+    if still_hashed and not was_decoded:
+        hint = (
+            "M-Pesa sends a SHA-256 hash in C2B, not the raw number. "
+            "Use Admin → Settings → M-Pesa tools → add-msisdn-lookup with this customer’s phone (254…), "
+            "or complete an STK payment from their line so we can link the hash. "
+            "Alternatively configure MPESA_DECODE_MSISDN_URL if you run a compatible decode service."
+        )
 
     return {
         "phone": phone,
         "raw_stored": raw,
         "was_decoded": was_decoded,
+        "still_hashed": still_hashed,
+        "hint": hint,
     }
 
 

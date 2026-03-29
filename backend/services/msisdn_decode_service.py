@@ -40,25 +40,33 @@ def looks_like_hash(value: str) -> bool:
 
 async def add_to_lookup(phone: str) -> None:
     """
-    Add a plain phone to our hash lookup. Call when we receive a transaction
-    with plain phone (STK, or C2B before hashing was enforced).
+    Add a plain phone to our hash lookup. Indexes multiple SHA-256 preimages
+    Safaricom may use for C2B (254…, 07…, 9-digit national, +prefix, etc.).
     """
-    from backend.models.msisdn_hash_lookup import hash_msisdn
+    from backend.models.msisdn_hash_lookup import (
+        _normalize_phone,
+        safaricom_msisdn_preimage_variants,
+        sha256_lower_hex,
+    )
 
     if not phone or not looks_like_plain_phone(phone):
         return
-    h = hash_msisdn(phone)
-    if not h:
+    normalized = _normalize_phone(phone.strip())
+    if not normalized:
         return
-    existing = await MsisdnHashLookup.find_one({"sha256_hash": h})
-    if existing:
-        return
-    try:
-        lookup = MsisdnHashLookup(sha256_hash=h, phone=phone.strip())
-        await lookup.insert()
-        logger.debug("Added MSISDN lookup for %s", phone[:7] + "***")
-    except Exception:
-        pass  # Duplicate hash — ignore
+    added = 0
+    for preimage in safaricom_msisdn_preimage_variants(normalized):
+        h = sha256_lower_hex(preimage)
+        existing = await MsisdnHashLookup.find_one({"sha256_hash": h})
+        if existing:
+            continue
+        try:
+            await MsisdnHashLookup(sha256_hash=h, phone=normalized).insert()
+            added += 1
+        except Exception:
+            pass
+    if added:
+        logger.debug("MSISDN lookup: +%s variant(s) for %s***", added, normalized[:6])
 
 
 async def _get_decode_url() -> str:
