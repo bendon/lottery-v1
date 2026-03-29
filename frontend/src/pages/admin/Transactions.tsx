@@ -3,8 +3,34 @@ import api from "@/api/client";
 import { Transaction } from "@/types";
 import { formatAmount, formatDate } from "@/lib/utils";
 
+type MpesaStatus = {
+  short_code: string | null;
+  till_display_number: string | null;
+  account_type: string;
+};
+
+/** Admin table: Paybill = short code on txn; Till/STK = Till no. from Settings when set, else Daraja code */
+function payToCell(t: Transaction, mpesa: MpesaStatus | null): { main: string; sub?: string } {
+  const api = (t.till_number || t.paybill_number || "").trim();
+  if (t.payment_type === "paybill") {
+    return { main: api || "—" };
+  }
+  if (t.payment_type === "till" || t.payment_type === "stk_push") {
+    const display = (mpesa?.till_display_number || "").trim();
+    if (display) {
+      return {
+        main: display,
+        sub: api && api !== display ? `Daraja ${api}` : undefined,
+      };
+    }
+    return { main: api || "—" };
+  }
+  return { main: api || "—" };
+}
+
 export default function AdminTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [mpesa, setMpesa] = useState<MpesaStatus | null>(null);
   const [search, setSearch] = useState("");
   const [paymentType, setPaymentType] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -35,10 +61,12 @@ export default function AdminTransactions() {
     load();
   }, [search, paymentType, dateFrom, dateTo]);
 
-  /** Daraja BusinessShortCode — C2B sets till_number and paybill_number to the same value */
-  function businessShortCode(t: Transaction): string {
-    return (t.till_number || t.paybill_number || "").trim() || "—";
-  }
+  useEffect(() => {
+    api
+      .get<MpesaStatus>("/api/admin/mpesa/status")
+      .then((r) => setMpesa(r.data))
+      .catch(() => setMpesa(null));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,8 +134,11 @@ export default function AdminTransactions() {
             <tr>
               <th className="px-4 py-3 text-left">Ref</th>
               <th className="px-4 py-3 text-left">Type</th>
-              <th className="px-4 py-3 text-left whitespace-nowrap" title="Daraja BusinessShortCode">
-                Bus. short code
+              <th
+                className="px-4 py-3 text-left whitespace-nowrap"
+                title="Till / STK: on-air Till number from Settings when set; Paybill: business short code"
+              >
+                Pay to
               </th>
               <th className="px-4 py-3 text-left">Amount</th>
               <th className="px-4 py-3 text-left">Customer</th>
@@ -117,11 +148,18 @@ export default function AdminTransactions() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {transactions.map((t) => (
+            {transactions.map((t) => {
+              const pay = payToCell(t, mpesa);
+              return (
               <tr key={t.id}>
                 <td className="px-4 py-3 font-mono text-xs">{t.transaction_number}</td>
                 <td className="px-4 py-3 capitalize">{t.payment_type}</td>
-                <td className="px-4 py-3 font-mono text-xs text-gray-700">{businessShortCode(t)}</td>
+                <td className="px-4 py-3 text-gray-700">
+                  <span className="font-mono text-xs block">{pay.main}</span>
+                  {pay.sub && (
+                    <span className="text-[10px] text-gray-400 font-mono">{pay.sub}</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">{formatAmount(t.amount)}</td>
                 <td className="px-4 py-3 text-gray-600">{t.customer_name || "—"}</td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-600 break-all max-w-[140px]">
@@ -132,7 +170,8 @@ export default function AdminTransactions() {
                 </td>
                 <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDate(t.payment_date)}</td>
               </tr>
-            ))}
+            );
+            })}
             {transactions.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-8 text-center text-gray-400">No transactions found</td>
