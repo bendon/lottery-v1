@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "@/api/client";
 import { Transaction } from "@/types";
 import { formatAmount, formatDate, formatKeMsisdnReadable, maskMsisdnDisplay } from "@/lib/utils";
+import { canMutateAdmin } from "@/lib/roles";
 
 type MpesaStatus = {
   short_code: string | null;
@@ -29,6 +30,7 @@ function payToCell(t: Transaction, mpesa: MpesaStatus | null): { main: string; s
 }
 
 export default function AdminTransactions() {
+  const canMutate = canMutateAdmin(localStorage.getItem("role"));
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [mpesa, setMpesa] = useState<MpesaStatus | null>(null);
   const [search, setSearch] = useState("");
@@ -141,12 +143,14 @@ export default function AdminTransactions() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Transactions</h2>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-black text-white text-sm px-4 py-2 rounded hover:bg-gray-800"
-        >
-          Add Transaction
-        </button>
+        {canMutate && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-black text-white text-sm px-4 py-2 rounded hover:bg-gray-800"
+          >
+            Add Transaction
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -233,7 +237,7 @@ export default function AdminTransactions() {
                         </p>
                       ) : null}
                     </div>
-                    {t.customer_phone?.trim() ? (
+                    {t.customer_phone?.trim() && canMutate ? (
                       <button
                         type="button"
                         onClick={() => togglePhoneReveal(t)}

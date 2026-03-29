@@ -9,7 +9,7 @@ class User(Document):
     email: Indexed(str, unique=True)
     hashed_password: str
     full_name: Optional[str] = None
-    role: str = "presenter"  # "admin" | "presenter"
+    role: str = "presenter"  # "admin" | "auditor" | "presenter"
     user_type: Optional[str] = None  # "radio_station" | "ad_agency" | "influencer" | "promoter"
     organization: Optional[str] = None
     is_active: bool = True

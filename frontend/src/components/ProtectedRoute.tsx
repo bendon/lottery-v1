@@ -1,17 +1,19 @@
 import { Navigate } from "react-router-dom";
+import type { AppRole } from "@/types";
+import { homePathForRole } from "@/lib/roles";
 
 interface Props {
   children: React.ReactNode;
-  role?: "admin" | "presenter";
+  allowedRoles: AppRole[];
 }
 
-export function ProtectedRoute({ children, role }: Props) {
+export function ProtectedRoute({ children, allowedRoles }: Props) {
   const token = localStorage.getItem("token");
   const userRole = localStorage.getItem("role");
 
   if (!token) return <Navigate to="/login" replace />;
-  if (role && userRole !== role) {
-    return <Navigate to={userRole === "admin" ? "/admin/dashboard" : "/dashboard"} replace />;
+  if (!userRole || !allowedRoles.includes(userRole as AppRole)) {
+    return <Navigate to={homePathForRole(userRole)} replace />;
   }
 
   return <>{children}</>;

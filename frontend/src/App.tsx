@@ -10,6 +10,7 @@ import AdminTransactions from "@/pages/admin/Transactions";
 import AdminSettings from "@/pages/admin/Settings";
 import AdminDraws from "@/pages/admin/Draws";
 import PresenterDashboard from "@/pages/presenter/Dashboard";
+import { homePathForRole } from "@/lib/roles";
 
 export default function App() {
   const role = localStorage.getItem("role");
@@ -23,7 +24,7 @@ export default function App() {
         <Route
           path="/admin/*"
           element={
-            <ProtectedRoute role="admin">
+            <ProtectedRoute allowedRoles={["admin", "auditor"]}>
               <Layout>
                 <Routes>
                   <Route path="dashboard" element={<AdminDashboard />} />
@@ -43,7 +44,7 @@ export default function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute role="presenter">
+            <ProtectedRoute allowedRoles={["presenter"]}>
               <Layout>
                 <PresenterDashboard />
               </Layout>
@@ -54,15 +55,7 @@ export default function App() {
         {/* Root redirect */}
         <Route
           path="/"
-          element={
-            role === "admin" ? (
-              <Navigate to="/admin/dashboard" replace />
-            ) : role === "presenter" ? (
-              <Navigate to="/dashboard" replace />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
+          element={<Navigate to={homePathForRole(role)} replace />}
         />
       </Routes>
     </BrowserRouter>

@@ -6,6 +6,16 @@ from backend.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
+STAFF_READ_ROLES = frozenset({"admin", "auditor"})
+
+
+def is_staff_reader(role: str) -> bool:
+    return role in STAFF_READ_ROLES
+
+
+def is_staff_writer(role: str) -> bool:
+    return role == "admin"
+
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     credentials_exception = HTTPException(
@@ -27,8 +37,17 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     return user
 
 
+async def require_admin_read(current_user: User = Depends(get_current_user)) -> User:
+    if not is_staff_reader(current_user.role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return current_user
+
+
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role != "admin":
+    if not is_staff_writer(current_user.role):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",

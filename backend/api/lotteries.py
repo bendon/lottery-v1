@@ -5,7 +5,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.auth.dependencies import get_current_user, require_admin
+from backend.auth.dependencies import require_admin, require_admin_read
 from backend.models.lottery import Lottery, DEMO_PAYBILL
 from backend.services import config_service
 
@@ -81,7 +81,7 @@ async def create_lottery(body: LotteryCreate, current_user=Depends(require_admin
 
 
 @router.get("")
-async def list_lotteries(_=Depends(require_admin)):
+async def list_lotteries(_=Depends(require_admin_read)):
     lotteries = await Lottery.find_all().to_list()
     mpesa = await config_service.get_mpesa_config()
     till_display = (mpesa.get("mpesa_till_display_number") or "").strip()
@@ -99,7 +99,7 @@ async def list_lotteries(_=Depends(require_admin)):
 
 
 @router.get("/{lottery_id}")
-async def get_lottery(lottery_id: PydanticObjectId, _=Depends(require_admin)):
+async def get_lottery(lottery_id: PydanticObjectId, _=Depends(require_admin_read)):
     lottery = await Lottery.get(lottery_id)
     if not lottery:
         raise HTTPException(status_code=404, detail="Lottery not found")

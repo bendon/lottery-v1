@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "@/api/client";
 import { Lottery } from "@/types";
 import { formatAmount } from "@/lib/utils";
+import { canMutateAdmin } from "@/lib/roles";
 
 const DEMO_PAYBILL = "174379";
 
@@ -32,6 +33,7 @@ const emptyConfig = (l: Lottery): ConfigForm => ({
 });
 
 export default function AdminLotteries() {
+  const canMutate = canMutateAdmin(localStorage.getItem("role"));
   const [lotteries, setLotteries] = useState<Lottery[]>([]);
   const [mpesaActive, setMpesaActive] = useState<boolean | null>(null);
 
@@ -123,15 +125,17 @@ export default function AdminLotteries() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Lotteries</h2>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="bg-black text-white text-sm px-4 py-2 rounded hover:bg-gray-800"
-        >
-          New Lottery
-        </button>
+        {canMutate && (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="bg-black text-white text-sm px-4 py-2 rounded hover:bg-gray-800"
+          >
+            New Lottery
+          </button>
+        )}
       </div>
 
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="border border-gray-200 rounded-lg overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
@@ -180,14 +184,18 @@ export default function AdminLotteries() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-3">
-                    <button onClick={() => openConfig(l)} className="text-xs text-black underline hover:text-gray-600">
-                      Configure
-                    </button>
-                    <button onClick={() => toggleActive(l)} className="text-xs text-gray-400 underline hover:text-black">
-                      {l.is_active ? "Deactivate" : "Activate"}
-                    </button>
-                  </div>
+                  {canMutate ? (
+                    <div className="flex gap-3">
+                      <button onClick={() => openConfig(l)} className="text-xs text-black underline hover:text-gray-600">
+                        Configure
+                      </button>
+                      <button onClick={() => toggleActive(l)} className="text-xs text-gray-400 underline hover:text-black">
+                        {l.is_active ? "Deactivate" : "Activate"}
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">—</span>
+                  )}
                 </td>
               </tr>
             ))}

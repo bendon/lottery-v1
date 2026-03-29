@@ -1,9 +1,11 @@
+export type AppRole = "admin" | "auditor" | "presenter";
+
 export interface User {
   id: string;
   username: string;
   email: string;
   full_name?: string;
-  role: "admin" | "presenter";
+  role: AppRole;
   user_type?: string;
   organization?: string;
   is_active: boolean;
@@ -80,6 +82,6 @@ export interface SystemSetting {
 
 export interface AuthState {
   token: string | null;
-  role: "admin" | "presenter" | null;
+  role: AppRole | null;
   user: Partial<User> | null;
 }

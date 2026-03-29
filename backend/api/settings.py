@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.auth.dependencies import require_admin
+from backend.auth.dependencies import require_admin, require_admin_read
 from backend.models.system_setting import SystemSetting
 from backend.services import config_service
 
@@ -59,7 +59,7 @@ class SettingUpdate(BaseModel):
 
 
 @router.get("/settings")
-async def list_settings(_=Depends(require_admin)):
+async def list_settings(_=Depends(require_admin_read)):
     settings = await SystemSetting.find_all().to_list()
     return [{"id": str(s.id), **s.dict()} for s in settings]
 
@@ -87,5 +87,5 @@ async def update_setting(key: str, body: SettingUpdate, _=Depends(require_admin)
 
 
 @router.get("/setting-types")
-async def setting_types(_=Depends(require_admin)):
+async def setting_types(_=Depends(require_admin_read)):
     return SETTING_DEFINITIONS

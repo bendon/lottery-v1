@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { homePathForRole } from "@/lib/roles";
 
 export default function Login() {
   const { login } = useAuth();
@@ -16,7 +17,7 @@ export default function Login() {
     setLoading(true);
     try {
       const role = await login(username, password);
-      navigate(role === "admin" ? "/admin/dashboard" : "/dashboard");
+      navigate(homePathForRole(role));
     } catch {
       setError("Invalid username or password");
     } finally {

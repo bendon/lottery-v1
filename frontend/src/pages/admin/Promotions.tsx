@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "@/api/client";
 import { Promotion, User, Lottery } from "@/types";
 import { formatDate } from "@/lib/utils";
+import { canMutateAdmin } from "@/lib/roles";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -291,6 +292,7 @@ function CreateOperatorModal({ onClose, onCreated }: CreateOperatorModalProps) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminPromotions() {
+  const canMutate = canMutateAdmin(localStorage.getItem("role"));
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [lotteries, setLotteries] = useState<Lottery[]>([]);
@@ -378,12 +380,14 @@ export default function AdminPromotions() {
             Campaigns run by radio stations, agencies, influencers, and promoters
           </p>
         </div>
-        <button
-          onClick={() => setShowPromoModal(true)}
-          className="bg-black text-white text-sm px-4 py-2 rounded hover:bg-gray-800"
-        >
-          + New Promotion
-        </button>
+        {canMutate && (
+          <button
+            onClick={() => setShowPromoModal(true)}
+            className="bg-black text-white text-sm px-4 py-2 rounded hover:bg-gray-800"
+          >
+            + New Promotion
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -422,7 +426,7 @@ export default function AdminPromotions() {
       </div>
 
       {/* Table */}
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="border border-gray-200 rounded-lg overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
@@ -498,7 +502,7 @@ export default function AdminPromotions() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {p.status !== "cancelled" && status !== "ended" && (
+                    {canMutate && p.status !== "cancelled" && status !== "ended" && (
                       <button
                         onClick={() => cancelPromo(p)}
                         className="text-xs text-red-500 hover:text-red-700 underline"
@@ -515,7 +519,7 @@ export default function AdminPromotions() {
       </div>
 
       {/* ── Create Promotion Modal ── */}
-      {showPromoModal && (
+      {showPromoModal && canMutate && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl border w-full max-w-md shadow-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b">
@@ -689,7 +693,7 @@ export default function AdminPromotions() {
       )}
 
       {/* ── Create Operator Modal (independent, on top) ── */}
-      {showOperatorModal && (
+      {showOperatorModal && canMutate && (
         <CreateOperatorModal
           onClose={() => setShowOperatorModal(false)}
           onCreated={handleOperatorCreated}

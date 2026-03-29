@@ -169,15 +169,15 @@ export default function PresenterDashboard() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
             { label: "Active Promotions", value: stats.active_promotions },
             { label: "Total Draws", value: stats.total_draws },
             { label: "Transactions", value: stats.total_transactions },
             { label: "Total Promotions", value: stats.total_promotions },
           ].map((c) => (
-            <div key={c.label} className="border border-gray-200 rounded-lg p-4">
-              <p className="text-xs text-gray-500">{c.label}</p>
+            <div key={c.label} className="min-w-0 border border-gray-200 rounded-lg p-4">
+              <p className="text-xs text-gray-500 break-words">{c.label}</p>
               <p className="text-2xl font-bold mt-1">{c.value}</p>
             </div>
           ))}
@@ -320,10 +320,15 @@ export default function PresenterDashboard() {
                     </div>
                     <div className="divide-y divide-gray-100 max-h-48 overflow-auto">
                       {eligible.map((t) => (
-                        <div key={t.id} className="flex items-center justify-between px-4 py-2 text-sm">
-                          <span className="font-mono text-xs">{t.transaction_number}</span>
-                          <span>{t.customer_name || "—"}</span>
-                          <span className="text-gray-500">{formatAmount(t.amount)}</span>
+                        <div
+                          key={t.id}
+                          className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-4 py-2 text-sm min-w-0"
+                        >
+                          <span className="font-mono text-xs shrink-0">{t.transaction_number}</span>
+                          <span className="min-w-0 truncate sm:overflow-visible sm:whitespace-normal sm:text-center sm:flex-1 sm:px-2">
+                            {t.customer_name || "—"}
+                          </span>
+                          <span className="text-gray-500 shrink-0 sm:text-right">{formatAmount(t.amount)}</span>
                         </div>
                       ))}
                     </div>
@@ -334,7 +339,7 @@ export default function PresenterDashboard() {
           </div>
 
           <h3 className="font-semibold mb-3">Draw History</h3>
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="border border-gray-200 rounded-lg overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                 <tr>
@@ -368,17 +373,17 @@ export default function PresenterDashboard() {
       {/* ── Transactions Tab ── */}
       {tab === "transactions" && (
         <>
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="border border-gray-200 rounded-lg p-4">
-              <p className="text-xs text-gray-500">Total Entries</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="min-w-0 border border-gray-200 rounded-lg p-4">
+              <p className="text-xs text-gray-500 break-words">Total Entries</p>
               <p className="text-2xl font-bold mt-1">{transactions.length}</p>
             </div>
-            <div className="border border-gray-200 rounded-lg p-4">
-              <p className="text-xs text-gray-500">Total Value</p>
+            <div className="min-w-0 border border-gray-200 rounded-lg p-4">
+              <p className="text-xs text-gray-500 break-words">Total Value</p>
               <p className="text-2xl font-bold mt-1">{formatAmount(totalAmount)}</p>
             </div>
-            <div className="border border-gray-200 rounded-lg p-4">
-              <p className="text-xs text-gray-500">Today's Entries</p>
+            <div className="min-w-0 border border-gray-200 rounded-lg p-4">
+              <p className="text-xs text-gray-500 break-words">Today's Entries</p>
               <p className="text-2xl font-bold mt-1">{todayCount}</p>
             </div>
           </div>
@@ -408,13 +413,14 @@ export default function PresenterDashboard() {
           )}
 
           <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
+            <div className="px-4 py-3 bg-gray-50 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-sm font-semibold text-gray-700">Entry Log</h3>
               <span className="text-xs text-gray-400">Customer details are masked for privacy</span>
             </div>
             {txnLoading ? (
               <div className="px-4 py-8 text-center text-gray-400 text-sm">Loading...</div>
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-xs text-gray-500 uppercase border-b border-gray-100">
                   <tr>
@@ -459,6 +465,7 @@ export default function PresenterDashboard() {
                   )}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </>

@@ -5,7 +5,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.auth.dependencies import get_current_user, require_admin
+from backend.auth.dependencies import get_current_user, require_admin, require_admin_read
 from backend.models.notification import NotificationPreferences
 from backend.models.sms_config import SMSConfiguration
 from backend.models.smtp_config import SMTPConfiguration
@@ -35,7 +35,7 @@ async def create_smtp(body: SMTPCreate, _=Depends(require_admin)):
 
 
 @router.get("/api/admin/smtp-configurations")
-async def list_smtp(_=Depends(require_admin)):
+async def list_smtp(_=Depends(require_admin_read)):
     configs = await SMTPConfiguration.find_all().to_list()
     return [{"id": str(c.id), **c.dict()} for c in configs]
 
@@ -67,7 +67,7 @@ async def create_sms(body: SMSCreate, _=Depends(require_admin)):
 
 
 @router.get("/api/admin/sms-configurations")
-async def list_sms(_=Depends(require_admin)):
+async def list_sms(_=Depends(require_admin_read)):
     configs = await SMSConfiguration.find_all().to_list()
     return [{"id": str(c.id), **c.dict()} for c in configs]
 

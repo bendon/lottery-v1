@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends
 
-from backend.auth.dependencies import get_current_user, require_admin
+from backend.auth.dependencies import get_current_user, require_admin_read
 from backend.models.draw import Draw
 from backend.models.lottery import Lottery
 from backend.models.promotion import Promotion
@@ -14,7 +14,7 @@ router = APIRouter(tags=["dashboard"])
 
 
 @router.get("/api/admin/dashboard/stats")
-async def admin_stats(_=Depends(require_admin)):
+async def admin_stats(_=Depends(require_admin_read)):
     now = datetime.utcnow()
     thirty_days_ago = now - timedelta(days=30)
 

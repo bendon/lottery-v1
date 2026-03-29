@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.auth.dependencies import require_admin
+from backend.auth.dependencies import require_admin, require_admin_read
 from backend.models.system_setting import SystemSetting
 from backend.services import config_service
 from backend.services.mpesa_service import get_access_token, register_c2b_urls
@@ -40,7 +40,7 @@ class MpesaConfigUpdate(BaseModel):
 
 
 @router.get("/status")
-async def mpesa_status(_=Depends(require_admin)):
+async def mpesa_status(_=Depends(require_admin_read)):
     """Check if M-Pesa is configured and active (has credentials + short code)."""
     config = await config_service.get_mpesa_config()
     has_creds = bool(config.get("mpesa_consumer_key") and config.get("mpesa_consumer_secret"))
@@ -55,7 +55,7 @@ async def mpesa_status(_=Depends(require_admin)):
 
 
 @router.get("/config")
-async def get_mpesa_config(_=Depends(require_admin)):
+async def get_mpesa_config(_=Depends(require_admin_read)):
     """Get current M-Pesa config. Secrets are masked in response."""
     config = await config_service.get_mpesa_config()
     return {

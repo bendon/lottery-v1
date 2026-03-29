@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import api from "@/api/client";
 import { User } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
+import { canMutateAdmin, roleDisplayLabel } from "@/lib/roles";
 
 export default function AdminUsers() {
   const { auth } = useAuth();
+  const canMutate = canMutateAdmin(localStorage.getItem("role"));
   const [users, setUsers] = useState<User[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
@@ -80,12 +82,14 @@ export default function AdminUsers() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Users</h2>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-black text-white text-sm px-4 py-2 rounded hover:bg-gray-800"
-        >
-          Add User
-        </button>
+        {canMutate && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-black text-white text-sm px-4 py-2 rounded hover:bg-gray-800"
+          >
+            Add User
+          </button>
+        )}
       </div>
 
       {bannerError && (
@@ -118,7 +122,7 @@ export default function AdminUsers() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-gray-500">{u.email}</td>
-                  <td className="px-4 py-3 capitalize">{u.role}</td>
+                  <td className="px-4 py-3">{roleDisplayLabel(u.role)}</td>
                   <td className="px-4 py-3 text-gray-500">{u.user_type || "—"}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${u.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
@@ -127,33 +131,38 @@ export default function AdminUsers() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPasswordUser(u);
-                          setPasswordForm({ password: "", confirm: "" });
-                          setPasswordError("");
-                        }}
-                        className="text-xs text-black hover:underline"
-                      >
-                        Set password
-                      </button>
-                      {isSelf ? (
-                        <span
-                          className="text-xs text-gray-400 cursor-default"
-                          title="You cannot deactivate the account you are logged in with. Use another administrator, or change status in the database."
-                        >
-                          Deactivate unavailable
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => toggleActive(u)}
-                          className="text-xs text-gray-500 hover:text-black underline"
-                        >
-                          {u.is_active ? "Deactivate" : "Activate"}
-                        </button>
+                      {canMutate && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPasswordUser(u);
+                              setPasswordForm({ password: "", confirm: "" });
+                              setPasswordError("");
+                            }}
+                            className="text-xs text-black hover:underline"
+                          >
+                            Set password
+                          </button>
+                          {isSelf ? (
+                            <span
+                              className="text-xs text-gray-400 cursor-default"
+                              title="You cannot deactivate the account you are logged in with. Use another administrator, or change status in the database."
+                            >
+                              Deactivate unavailable
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => toggleActive(u)}
+                              className="text-xs text-gray-500 hover:text-black underline"
+                            >
+                              {u.is_active ? "Deactivate" : "Activate"}
+                            </button>
+                          )}
+                        </>
                       )}
+                      {!canMutate && <span className="text-xs text-gray-400">—</span>}
                     </div>
                   </td>
                 </tr>
@@ -194,6 +203,7 @@ export default function AdminUsers() {
                 >
                   <option value="presenter">Presenter</option>
                   <option value="admin">Admin</option>
+                  <option value="auditor">Auditor</option>
                 </select>
               </div>
               <div>

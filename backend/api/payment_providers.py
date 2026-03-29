@@ -5,7 +5,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.auth.dependencies import require_admin
+from backend.auth.dependencies import require_admin, require_admin_read
 from backend.models.payment_provider import PaymentProvider
 
 router = APIRouter(prefix="/api/admin/payment-providers", tags=["payment-providers"])
@@ -39,7 +39,7 @@ async def create_provider(body: ProviderCreate, _=Depends(require_admin)):
 
 
 @router.get("")
-async def list_providers(_=Depends(require_admin)):
+async def list_providers(_=Depends(require_admin_read)):
     providers = await PaymentProvider.find_all().to_list()
     return [{"id": str(p.id), **p.dict()} for p in providers]
 

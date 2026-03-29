@@ -5,7 +5,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from backend.auth.dependencies import get_current_user, require_admin
+from backend.auth.dependencies import get_current_user, require_admin, require_admin_read
 from backend.models.lottery import Lottery
 from backend.models.promotion import Promotion
 from backend.models.transaction import Transaction
@@ -63,13 +63,13 @@ async def create_promotion(body: PromotionCreate, current_user=Depends(require_a
 
 
 @router.get("/api/admin/promotions")
-async def list_promotions(_=Depends(require_admin)):
+async def list_promotions(_=Depends(require_admin_read)):
     promotions = await Promotion.find_all().to_list()
     return [{"id": str(p.id), **p.dict()} for p in promotions]
 
 
 @router.get("/api/admin/promotions/{promotion_id}")
-async def get_promotion(promotion_id: PydanticObjectId, _=Depends(require_admin)):
+async def get_promotion(promotion_id: PydanticObjectId, _=Depends(require_admin_read)):
     p = await Promotion.get(promotion_id)
     if not p:
         raise HTTPException(status_code=404, detail="Promotion not found")

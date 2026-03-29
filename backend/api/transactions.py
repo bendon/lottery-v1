@@ -5,7 +5,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from backend.auth.dependencies import require_admin
+from backend.auth.dependencies import require_admin, require_admin_read
 from backend.models.transaction import Transaction
 from backend.services.transaction_router import route_transaction
 from backend.services.msisdn_decode_service import decode_msisdn, looks_like_hash
@@ -45,7 +45,7 @@ async def list_transactions(
     date_from: Optional[datetime] = Query(None),
     date_to: Optional[datetime] = Query(None),
     search: Optional[str] = Query(None),
-    _=Depends(require_admin),
+    _=Depends(require_admin_read),
 ):
     query: dict = {}
     if payment_type:
@@ -86,9 +86,11 @@ async def reveal_customer_phone(transaction_id: PydanticObjectId, _=Depends(requ
     if still_hashed and not was_decoded:
         hint = (
             "M-Pesa sends a SHA-256 hash in C2B, not the raw number. "
+            "Our MSISDN Decode API is mpesa-hash-decoder-compatible, but it only returns a phone when that hash "
+            "is already in our lookup database (it cannot reverse SHA-256 on its own). "
             "In Admin → Settings → M-Pesa, use 'Add to hash lookup' with this customer's phone (254…), "
-            "or complete an STK payment from their line so we can link the hash. "
-            "You can also set MSISDN Decode API (DECODE_MSISDN_URL) if you use a compatible decode service."
+            "or complete an STK payment from their line so we store the mapping—then Show and the decode API "
+            "both work for that hash."
         )
 
     return {
@@ -101,7 +103,7 @@ async def reveal_customer_phone(transaction_id: PydanticObjectId, _=Depends(requ
 
 
 @router.get("/{transaction_id}")
-async def get_transaction(transaction_id: PydanticObjectId, _=Depends(require_admin)):
+async def get_transaction(transaction_id: PydanticObjectId, _=Depends(require_admin_read)):
     txn = await Transaction.get(transaction_id)
     if not txn:
         raise HTTPException(status_code=404, detail="Transaction not found")

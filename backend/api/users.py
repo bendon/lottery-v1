@@ -1,11 +1,11 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Literal, Optional
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.auth.dependencies import require_admin
+from backend.auth.dependencies import require_admin, require_admin_read
 from backend.auth.jwt import hash_password
 from backend.models.user import User
 
@@ -17,7 +17,7 @@ class UserCreate(BaseModel):
     email: str
     password: str
     full_name: Optional[str] = None
-    role: str = "presenter"
+    role: Literal["presenter", "admin", "auditor"] = "presenter"
     user_type: Optional[str] = None
     organization: Optional[str] = None
 
@@ -25,7 +25,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     email: Optional[str] = None
     full_name: Optional[str] = None
-    role: Optional[str] = None
+    role: Optional[Literal["presenter", "admin", "auditor"]] = None
     user_type: Optional[str] = None
     organization: Optional[str] = None
     is_active: Optional[bool] = None
@@ -53,13 +53,13 @@ async def create_user(body: UserCreate, _=Depends(require_admin)):
 
 
 @router.get("")
-async def list_users(_=Depends(require_admin)):
+async def list_users(_=Depends(require_admin_read)):
     users = await User.find_all().to_list()
     return [{"id": str(u.id), **u.dict(exclude={"hashed_password"})} for u in users]
 
 
 @router.get("/{user_id}")
-async def get_user(user_id: PydanticObjectId, _=Depends(require_admin)):
+async def get_user(user_id: PydanticObjectId, _=Depends(require_admin_read)):
     user = await User.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

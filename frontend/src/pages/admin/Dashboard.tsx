@@ -33,10 +33,10 @@ export default function AdminDashboard() {
     <div>
       <h2 className="text-xl font-bold mb-4">Dashboard</h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         {cards.map((c) => (
-          <div key={c.label} className="border border-gray-200 rounded-lg p-4">
-            <p className="text-xs text-gray-500">{c.label}</p>
+          <div key={c.label} className="min-w-0 border border-gray-200 rounded-lg p-4">
+            <p className="text-xs text-gray-500 break-words">{c.label}</p>
             <p className="text-2xl font-bold mt-1">{c.value}</p>
             {c.sub && <p className="text-xs text-gray-400 mt-0.5">{c.sub}</p>}
           </div>
@@ -44,7 +44,7 @@ export default function AdminDashboard() {
       </div>
 
       <h3 className="font-semibold mb-3">Recent Draws</h3>
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="border border-gray-200 rounded-lg overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>

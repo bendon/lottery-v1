@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "@/api/client";
 import { Draw, Promotion, Lottery, User } from "@/types";
 import { formatAmount, formatDate } from "@/lib/utils";
+import { canMutateAdmin } from "@/lib/roles";
 
 type ScheduleStatus = "on_air" | "upcoming" | "ended";
 
@@ -50,6 +51,7 @@ interface Transaction {
 }
 
 export default function AdminDraws() {
+  const canMutate = canMutateAdmin(localStorage.getItem("role"));
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [lotteries, setLotteries] = useState<Lottery[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -228,18 +230,22 @@ export default function AdminDraws() {
                 )}
 
                 {/* Eligible count + draw button */}
-                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4">
                   <div className="text-sm text-gray-600">
                     <span className="font-semibold text-gray-900 text-lg">{eligible.length}</span>
                     {" "}eligible transaction{eligible.length !== 1 ? "s" : ""}
                   </div>
-                  <button
-                    onClick={handleDraw}
-                    disabled={drawing || eligible.length === 0}
-                    className="bg-black text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {drawing ? "Drawing..." : "Draw Winner"}
-                  </button>
+                  {canMutate ? (
+                    <button
+                      onClick={handleDraw}
+                      disabled={drawing || eligible.length === 0}
+                      className="bg-black text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-gray-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {drawing ? "Drawing..." : "Draw Winner"}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-gray-400">Auditors cannot execute draws</span>
+                  )}
                 </div>
 
                 {error && (
@@ -292,7 +298,7 @@ export default function AdminDraws() {
 
       {/* Draw history */}
       <h3 className="font-semibold mb-3">Draw History</h3>
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="border border-gray-200 rounded-lg overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>

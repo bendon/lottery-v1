@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "@/api/client";
 import { SystemSetting } from "@/types";
+import { canMutateAdmin } from "@/lib/roles";
 
 type Tab = "general" | "mpesa";
 
@@ -19,6 +20,7 @@ interface MpesaConfig {
 }
 
 export default function AdminSettings() {
+  const canMutate = canMutateAdmin(localStorage.getItem("role"));
   const [tab, setTab] = useState<Tab>("general");
   const [settings, setSettings] = useState<SystemSetting[]>([]);
   const [definitions, setDefinitions] = useState<any[]>([]);
@@ -161,7 +163,7 @@ export default function AdminSettings() {
 
       {tab === "general" && (
         <>
-      {missing.length > 0 && (
+      {canMutate && missing.length > 0 && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
           <p className="font-medium mb-2">Available defaults not yet saved:</p>
           <div className="flex flex-wrap gap-2">
@@ -193,7 +195,7 @@ export default function AdminSettings() {
               <tr key={s.id}>
                 <td className="px-4 py-3 font-mono text-xs min-w-0 break-all">{s.key}</td>
                 <td className="px-4 py-3 min-w-0 max-w-[28rem]">
-                  {editing === s.key ? (
+                  {canMutate && editing === s.key ? (
                     <input
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
@@ -206,18 +208,20 @@ export default function AdminSettings() {
                 </td>
                 <td className="px-4 py-3 text-gray-500 text-xs min-w-0 break-words">{s.description}</td>
                 <td className="px-4 py-3">
-                  {editing === s.key ? (
+                  {canMutate && editing === s.key ? (
                     <div className="flex gap-1">
                       <button onClick={() => save(s.key)} className="text-xs text-black underline">Save</button>
                       <button onClick={() => setEditing(null)} className="text-xs text-gray-400 underline">Cancel</button>
                     </div>
-                  ) : (
+                  ) : canMutate ? (
                     <button
                       onClick={() => { setEditing(s.key); setEditValue(s.value || ""); }}
                       className="text-xs text-gray-500 hover:text-black underline"
                     >
                       Edit
                     </button>
+                  ) : (
+                    <span className="text-xs text-gray-400">—</span>
                   )}
                 </td>
               </tr>
@@ -257,10 +261,11 @@ export default function AdminSettings() {
                   </p>
                 )}
                 <input
+                  readOnly={!canMutate}
                   value={mpesaForm.mpesa_consumer_key ?? ""}
                   onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_consumer_key: e.target.value }))}
                   placeholder="Enter new value to change"
-                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono read-only:bg-gray-50"
                 />
               </div>
               <div className="min-w-0">
@@ -271,11 +276,12 @@ export default function AdminSettings() {
                   </p>
                 )}
                 <input
+                  readOnly={!canMutate}
                   type="password"
                   value={mpesaForm.mpesa_consumer_secret ?? ""}
                   onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_consumer_secret: e.target.value }))}
                   placeholder="Enter new value to change"
-                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono read-only:bg-gray-50"
                 />
               </div>
               <div className="min-w-0">
@@ -283,10 +289,11 @@ export default function AdminSettings() {
                   Business Short Code (Daraja / API)
                 </label>
                 <input
+                  readOnly={!canMutate}
                   value={mpesaForm.mpesa_business_short_code ?? ""}
                   onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_business_short_code: e.target.value }))}
                   placeholder="e.g. 4518831 — used for STK, C2B routing"
-                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono read-only:bg-gray-50"
                 />
               </div>
               <div className="min-w-0">
@@ -294,10 +301,11 @@ export default function AdminSettings() {
                   Till number (on-air / customer-facing, optional)
                 </label>
                 <input
+                  readOnly={!canMutate}
                   value={mpesaForm.mpesa_till_display_number ?? ""}
                   onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_till_display_number: e.target.value }))}
                   placeholder="e.g. 3329485 — display only when Account Type is Till"
-                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono read-only:bg-gray-50"
                 />
                 <p className="text-[10px] text-gray-400 mt-0.5">
                   Routing still uses Business Short Code above; this is for presenters and marketing copy.
@@ -311,11 +319,12 @@ export default function AdminSettings() {
                   </p>
                 )}
                 <input
+                  readOnly={!canMutate}
                   type="password"
                   value={mpesaForm.mpesa_passkey ?? ""}
                   onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_passkey: e.target.value }))}
                   placeholder="Enter new value to change"
-                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono read-only:bg-gray-50"
                 />
               </div>
             </div>
@@ -323,9 +332,10 @@ export default function AdminSettings() {
             <div className="min-w-0">
               <label className="block text-xs font-medium text-gray-500 mb-1">Base URL</label>
               <select
+                disabled={!canMutate}
                 value={mpesaForm.mpesa_base_url ?? "https://api.safaricom.co.ke"}
                 onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_base_url: e.target.value }))}
-                className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-600"
               >
                 <option value="https://api.safaricom.co.ke">Production (api.safaricom.co.ke)</option>
                 <option value="https://sandbox.safaricom.co.ke">Sandbox (sandbox.safaricom.co.ke)</option>
@@ -335,9 +345,10 @@ export default function AdminSettings() {
             <div className="min-w-0">
               <label className="block text-xs font-medium text-gray-500 mb-1">Account Type</label>
               <select
+                disabled={!canMutate}
                 value={mpesaForm.mpesa_account_type ?? "till"}
                 onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_account_type: e.target.value }))}
-                className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-600"
               >
                 <option value="till">Till (Buy Goods / Lipa Na M-Pesa)</option>
                 <option value="paybill">PayBill (uses account numbers for concurrent promotions)</option>
@@ -350,28 +361,31 @@ export default function AdminSettings() {
                 <div className="min-w-0">
                   <label className="block text-xs text-gray-400 mb-0.5">STK Push Callback</label>
                   <input
+                    readOnly={!canMutate}
                     value={mpesaForm.mpesa_callback_url ?? ""}
                     onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_callback_url: e.target.value }))}
                     placeholder="https://yourdomain.com/api/webhooks/daraja/stk-callback"
-                    className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                    className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono read-only:bg-gray-50"
                   />
                 </div>
                 <div className="min-w-0">
                   <label className="block text-xs text-gray-400 mb-0.5">C2B Confirmation URL</label>
                   <input
+                    readOnly={!canMutate}
                     value={mpesaForm.mpesa_c2b_confirmation_url ?? ""}
                     onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_c2b_confirmation_url: e.target.value }))}
                     placeholder="https://yourdomain.com/api/webhooks/daraja/c2b"
-                    className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                    className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono read-only:bg-gray-50"
                   />
                 </div>
                 <div className="min-w-0">
                   <label className="block text-xs text-gray-400 mb-0.5">C2B Validation URL</label>
                   <input
+                    readOnly={!canMutate}
                     value={mpesaForm.mpesa_c2b_validation_url ?? ""}
                     onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_c2b_validation_url: e.target.value }))}
                     placeholder="https://yourdomain.com/api/webhooks/daraja/c2b/validate"
-                    className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                    className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono read-only:bg-gray-50"
                   />
                 </div>
               </div>
@@ -385,10 +399,11 @@ export default function AdminSettings() {
               <div className="min-w-0">
                 <label className="block text-xs text-gray-400 mb-0.5">DECODE_MSISDN_URL</label>
                 <input
+                  readOnly={!canMutate}
                   value={mpesaForm.mpesa_decode_msisdn_url ?? ""}
                   onChange={(e) => setMpesaForm((f) => ({ ...f, mpesa_decode_msisdn_url: e.target.value }))}
                   placeholder="https://l-gain-v1.payl.to/api/msisdn/decode"
-                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono read-only:bg-gray-50"
                 />
               </div>
             </div>
@@ -404,16 +419,17 @@ export default function AdminSettings() {
                 <div className="min-w-[12rem] flex-1">
                   <label className="block text-xs text-gray-400 mb-0.5">Phone (254XXXXXXXXX)</label>
                   <input
+                    readOnly={!canMutate}
                     value={lookupPhone}
                     onChange={(e) => setLookupPhone(e.target.value)}
                     placeholder="254712345678"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono read-only:bg-gray-50"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={addMsisdnLookup}
-                  disabled={lookupBusy || !lookupPhone.trim()}
+                  disabled={!canMutate || lookupBusy || !lookupPhone.trim()}
                   className="border border-gray-300 px-4 py-2 rounded text-sm font-medium hover:bg-gray-50 disabled:opacity-50 shrink-0"
                 >
                   {lookupBusy ? "Adding…" : "Add to hash lookup"}
@@ -430,21 +446,21 @@ export default function AdminSettings() {
             <div className="flex flex-wrap gap-3 pt-2">
               <button
                 onClick={saveMpesa}
-                disabled={mpesaSaving}
+                disabled={!canMutate || mpesaSaving}
                 className="bg-black text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
               >
                 {mpesaSaving ? "Saving..." : "Save Config"}
               </button>
               <button
                 onClick={testOauth}
-                disabled={!!mpesaAction}
+                disabled={!canMutate || !!mpesaAction}
                 className="border border-gray-300 px-4 py-2 rounded text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
               >
                 {mpesaAction === "oauth" ? "Testing..." : "Test OAuth"}
               </button>
               <button
                 onClick={registerC2b}
-                disabled={!!mpesaAction}
+                disabled={!canMutate || !!mpesaAction}
                 className="border border-gray-300 px-4 py-2 rounded text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
               >
                 {mpesaAction === "c2b" ? "Registering..." : "Register C2B URLs"}
