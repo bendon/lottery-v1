@@ -31,6 +31,8 @@ export default function AdminSettings() {
   const [mpesaSaving, setMpesaSaving] = useState(false);
   const [mpesaAction, setMpesaAction] = useState<string | null>(null);
   const [mpesaError, setMpesaError] = useState("");
+  const [lookupPhone, setLookupPhone] = useState("");
+  const [lookupBusy, setLookupBusy] = useState(false);
 
   const load = () =>
     api.get<SystemSetting[]>("/api/admin/settings").then((r) => setSettings(r.data));
@@ -114,6 +116,20 @@ export default function AdminSettings() {
       setMpesaError(e.response?.data?.detail || "C2B registration failed");
     } finally {
       setMpesaAction(null);
+    }
+  };
+
+  const addMsisdnLookup = async () => {
+    setLookupBusy(true);
+    setMpesaError("");
+    try {
+      await api.post("/api/admin/mpesa/add-msisdn-lookup", { phone: lookupPhone.trim() });
+      setMpesaError("Phone added to hash lookup successfully.");
+      setLookupPhone("");
+    } catch (e: any) {
+      setMpesaError(e.response?.data?.detail || "Failed to add phone to lookup");
+    } finally {
+      setLookupBusy(false);
     }
   };
 
@@ -374,6 +390,34 @@ export default function AdminSettings() {
                   placeholder="https://l-gain-v1.payl.to/api/msisdn/decode"
                   className="w-full min-w-0 max-w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
                 />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100 min-w-0">
+              <p className="text-xs font-medium text-gray-500 mb-2">Add to hash lookup</p>
+              <p className="text-xs text-gray-400 mb-3 break-words">
+                For C2B payments Safaricom may send a SHA-256 of the payer’s MSISDN. Enter their real number here
+                (the line that paid) so we store the hash variants; then <strong>Show</strong> on Transactions can
+                resolve the number after the next webhook—or re-open Show for existing rows once this is saved.
+              </p>
+              <div className="flex flex-wrap gap-2 items-end">
+                <div className="min-w-[12rem] flex-1">
+                  <label className="block text-xs text-gray-400 mb-0.5">Phone (254XXXXXXXXX)</label>
+                  <input
+                    value={lookupPhone}
+                    onChange={(e) => setLookupPhone(e.target.value)}
+                    placeholder="254712345678"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={addMsisdnLookup}
+                  disabled={lookupBusy || !lookupPhone.trim()}
+                  className="border border-gray-300 px-4 py-2 rounded text-sm font-medium hover:bg-gray-50 disabled:opacity-50 shrink-0"
+                >
+                  {lookupBusy ? "Adding…" : "Add to hash lookup"}
+                </button>
               </div>
             </div>
 

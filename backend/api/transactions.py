@@ -86,9 +86,9 @@ async def reveal_customer_phone(transaction_id: PydanticObjectId, _=Depends(requ
     if still_hashed and not was_decoded:
         hint = (
             "M-Pesa sends a SHA-256 hash in C2B, not the raw number. "
-            "Use Admin → Settings → M-Pesa tools → add-msisdn-lookup with this customer’s phone (254…), "
+            "In Admin → Settings → M-Pesa, use 'Add to hash lookup' with this customer's phone (254…), "
             "or complete an STK payment from their line so we can link the hash. "
-            "Alternatively configure MPESA_DECODE_MSISDN_URL if you run a compatible decode service."
+            "You can also set MSISDN Decode API (DECODE_MSISDN_URL) if you use a compatible decode service."
         )
 
     return {
